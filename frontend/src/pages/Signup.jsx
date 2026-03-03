@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import Card from '../components/Card'
-import { LogIn } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 
-export default function Login() {
-  const [form, setForm] = useState({ email: '', password: '' })
+export default function Signup() {
+  const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [status, setStatus] = useState({ state: 'idle', message: '' })
 
   function update(k, v) {
@@ -13,29 +13,40 @@ export default function Login() {
   async function submit(e) {
     e.preventDefault()
     setStatus({ state: 'loading', message: '' })
-    // Demo-only: connect your real auth API later.
-    await new Promise((r) => setTimeout(r, 500))
-    setStatus({ state: 'ok', message: 'Logged in (demo). Connect real auth API later.' })
+    // Demo-only: connect your real registration API later.
+    await new Promise((r) => setTimeout(r, 600))
+    setStatus({ state: 'ok', message: 'Account created (demo). Connect real auth API later.' })
   }
 
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-2xl font-semibold text-slate-100">Login</div>
-        <div className="mt-1 text-sm text-slate-300">Sign in to manage your campus items.</div>
+        <div className="text-2xl font-semibold text-slate-100">Sign up</div>
+        <div className="mt-1 text-sm text-slate-300">Create a campus account to report items & claims.</div>
       </div>
 
       <Card
-        title="Student Login"
+        title="Create Account"
         subtitle="Use your campus email. (Demo UI)"
         action={
           <span className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-medium text-slate-100 ring-1 ring-slate-800">
-            <LogIn className="h-4 w-4" />
-            Secure
+            <UserPlus className="h-4 w-4" />
+            New
           </span>
         }
       >
         <form onSubmit={submit} className="grid gap-3">
+          <label className="grid gap-1">
+            <span className="text-xs font-medium text-slate-600">Full Name</span>
+            <input
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
+              placeholder="Your name"
+              value={form.name}
+              onChange={(e) => update('name', e.target.value)}
+              required
+            />
+          </label>
+
           <label className="grid gap-1">
             <span className="text-xs font-medium text-slate-600">Email</span>
             <input
@@ -52,7 +63,7 @@ export default function Login() {
             <span className="text-xs font-medium text-slate-600">Password</span>
             <input
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40"
-              placeholder="••••••••"
+              placeholder="Create a password"
               value={form.password}
               onChange={(e) => update('password', e.target.value)}
               required
@@ -65,7 +76,7 @@ export default function Login() {
             className="mt-1 inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
             disabled={status.state === 'loading'}
           >
-            {status.state === 'loading' ? 'Signing in…' : 'Sign in'}
+            {status.state === 'loading' ? 'Creating…' : 'Create account'}
           </button>
 
           {status.message ? (
