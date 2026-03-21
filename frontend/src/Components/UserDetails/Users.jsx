@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Nav from '../Nav/Nav'
 import axios from "axios";
 import User from '../User/User';
-
+//comment
 const URL ="http://localhost:5000/Users"
 
 const fetchHandler = async () => {
