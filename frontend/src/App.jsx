@@ -2,25 +2,42 @@ import React from 'react'
 import './App.css'
 import Home from './Components/Home/Home.jsx'
 import Users from './Components/UserDetails/Users.jsx'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Register from './Components/Register/Register.jsx'
 import UpdateUser from './Components/UpdateUser/UpdateUser.jsx'
 import Login from './Components/Login/Login.jsx'
 import UserDashboard from './Components/Dashboard/UserDashboard.jsx'
 import AdminDashboard from './Components/Dashboard/AdminDashboard.jsx'
+import ProtectedRoute from './state/ProtectedRoute.jsx'
+import { useAuth } from './state/AuthContext.jsx'
 
 function App() {
+  const { isAuthenticated, user, loading } = useAuth()
+
+  if (loading) {
+    return null
+  }
+
+  const dashboardPath = user?.role === 'admin' ? '/admin-dashboard' : '/user-dashboard'
+  const homeElement = isAuthenticated ? <Navigate to={dashboardPath} replace /> : <Home />
+  const loginElement = isAuthenticated ? <Navigate to={dashboardPath} replace /> : <Login />
+  const registerElement = isAuthenticated ? <Navigate to={dashboardPath} replace /> : <Register />
+
   return (
     <div>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/mainhome" element={<Home />} />
+        <Route path="/" element={homeElement} />
+        <Route path="/mainhome" element={homeElement} />
         <Route path="/users" element={<Users />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={registerElement} />
+        <Route path="/login" element={loginElement} />
         <Route path="/users/:id" element={<UpdateUser />} />
-        <Route path="/user-dashboard" element={<UserDashboard />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+          <Route path="/user-dashboard" element={<UserDashboard />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        </Route>
       </Routes>
     </div>
   )

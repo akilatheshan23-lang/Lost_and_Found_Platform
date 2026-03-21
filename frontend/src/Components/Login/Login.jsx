@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import Nav from '../Nav/Nav'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import './Login.css'
+import { useAuth } from '../../state/AuthContext'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -10,15 +11,19 @@ function Login() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    const normalizedEmail = email.trim().toLowerCase()
+
     const studentDomain = '@my.sliit.lk'
     const adminDomain = '@sliit.lk'
-    const role = email.endsWith(studentDomain)
+    const role = normalizedEmail.endsWith(studentDomain)
       ? 'student'
-      : email.endsWith(adminDomain)
+      : normalizedEmail.endsWith(adminDomain)
       ? 'admin'
       : null
 
@@ -31,13 +36,25 @@ function Login() {
     setIsSubmitting(true)
     try {
       const { data } = await axios.post('http://localhost:5000/Users/login', {
-        email,
+        email: normalizedEmail,
         password,
       })
+
+      if (!data?.user) {
+        setError('Login response is invalid. Please try again.')
+        return
+      }
+
+      const token = data?.token || `legacy_${data.user?._id || normalizedEmail}_${Date.now()}`
+
+      login(token, data.user)
+
+      const fromPath = location.state?.from?.pathname
+
       if (data.user.role === 'admin') {
-        navigate('/admin-dashboard', { state: { user: data.user } })
+        navigate(fromPath === '/admin-dashboard' ? fromPath : '/admin-dashboard', { replace: true })
       } else {
-        navigate('/user-dashboard', { state: { user: data.user } })
+        navigate(fromPath === '/user-dashboard' ? fromPath : '/user-dashboard', { replace: true })
       }
     } catch (err) {
       setError(err?.response?.data?.message || 'Login failed')

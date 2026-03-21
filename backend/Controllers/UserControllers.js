@@ -1,5 +1,8 @@
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../Model/UserModel');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-env';
 
 //Data Display
 const getAllUsers = async (req, res, next) => {
@@ -113,17 +116,18 @@ const deleteUser = async (req, res, next) => {
 
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!normalizedEmail || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
 
   const studentDomain = '@my.sliit.lk';
   const adminDomain = '@sliit.lk';
 
-  const role = email.endsWith(studentDomain)
+  const role = normalizedEmail.endsWith(studentDomain)
     ? 'student'
-    : email.endsWith(adminDomain)
+    : normalizedEmail.endsWith(adminDomain)
     ? 'admin'
     : null;
 
@@ -132,9 +136,19 @@ const loginUser = async (req, res) => {
   }
 
   try {
-    const user = await User.findOne({ email, role });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Support legacy users created before role field was enforced.
+    if (!user.role) {
+      user.role = 'student';
+      await user.save();
+    }
+
+    if (user.role !== role) {
+      return res.status(403).json({ message: "Unauthorized role for this email domain" });
     }
 
     const storedPassword = user.password || '';
@@ -156,10 +170,35 @@ const loginUser = async (req, res) => {
     const safeUser = user.toObject();
     delete safeUser.password;
 
-    return res.status(200).json({ message: "Login successful", user: safeUser });
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        role: user.role,
+        email: user.email,
+      },
+      JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    return res.status(200).json({ message: "Login successful", token, user: safeUser });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Login failed" });
+  }
+};
+
+const getSessionUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.auth.userId).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ user });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: 'Failed to validate session' });
   }
 };
 
@@ -169,3 +208,4 @@ exports.addUser = addUser;
 exports.getById = getById;
 exports.deleteUser = deleteUser;
 exports.loginUser = loginUser;
+exports.getSessionUser = getSessionUser;
