@@ -4,14 +4,22 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import './Register.css'
 
+const FACULTY_ID_RULES = {
+  Computing: { prefix: 'IT', digits: 8 },
+  Business: { prefix: 'BM', digits: 8 },
+  Engineering: { prefix: 'EN', digits: 8 },
+  'Humanities and sciences': { prefix: 'HM', digits: 8 },
+  Architecture: { prefix: 'AC', digits: 8 },
+};
+
 function Register() {
 
   const history = useNavigate();
   const [inputs, setInputs] = useState({
     name: "",
-    email: "",
-    studentID: "",
     faculty: "",
+    studentID: "",
+    email: "",
     contactNumber: "",
     password: "",
     confirmPassword: "",
@@ -23,14 +31,45 @@ function Register() {
     mix: false,
   });
 
+  const selectedFacultyRule = FACULTY_ID_RULES[inputs.faculty] || null;
+  const fullStudentID = selectedFacultyRule
+    ? `${selectedFacultyRule.prefix}${inputs.studentID}`
+    : '';
+  const expectedUniversityEmail = fullStudentID ? `${fullStudentID}@my.sliit.lk` : '';
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === 'faculty') {
+      const nextRule = FACULTY_ID_RULES[value] || null;
+      setInputs((prevState) => ({
+        ...prevState,
+        faculty: value,
+        studentID: nextRule
+          ? prevState.studentID.replace(/\D/g, '').slice(0, nextRule.digits)
+          : '',
+      }));
+      return;
+    }
+
+    if (name === 'studentID') {
+      if (!selectedFacultyRule) {
+        return;
+      }
+      const onlyDigits = value.replace(/\D/g, '').slice(0, selectedFacultyRule.digits);
+      setInputs((prevState) => ({
+        ...prevState,
+        studentID: onlyDigits,
+      }));
+      return;
+    }
+
     setInputs((prevState) => ({
       ...prevState,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
 
-    if (e.target.name === 'password') {
-      const value = e.target.value;
+    if (name === 'password') {
       setPasswordHints({
         length: value.length >= 8,
         mix: /(?=.*[A-Za-z])(?=.*\d)/.test(value),
@@ -40,16 +79,24 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!inputs.email.endsWith('@my.sliit.lk')) {
-      setError('Use your university email (@my.sliit.lk)');
-      return;
-    }
     if (inputs.password.length < 8) {
       setError('Password must be at least 8 characters long');
       return;
     }
     if (!/(?=.*[A-Za-z])(?=.*\d)/.test(inputs.password)) {
       setError('Password must include letters and numbers');
+      return;
+    }
+    if (!selectedFacultyRule) {
+      setError('Please select your faculty');
+      return;
+    }
+    if (inputs.studentID.length !== selectedFacultyRule.digits) {
+      setError(`Enter exactly ${selectedFacultyRule.digits} digits after ${selectedFacultyRule.prefix}`);
+      return;
+    }
+    if (inputs.email.trim().toLowerCase() !== expectedUniversityEmail.toLowerCase()) {
+      setError(`University email must be ${expectedUniversityEmail}`);
       return;
     }
     if (inputs.password !== inputs.confirmPassword) {
@@ -73,7 +120,7 @@ function Register() {
     return axios.post("http://localhost:5000/Users", {
       name: String(inputs.name),
       email: String(inputs.email),
-      studentID: String(inputs.studentID),
+      studentID: String(fullStudentID),
       faculty: String(inputs.faculty),
       contactNumber: String(inputs.contactNumber),
       password: String(inputs.password),
@@ -101,23 +148,6 @@ function Register() {
               <input type="text" name="name" onChange={handleChange} placeholder="Full Name" value={inputs.name} required />
             </div>
             <div>
-              <label className="label">University Email</label>
-              <input
-                type="email"
-                name="email"
-                onChange={handleChange}
-                placeholder="studentID@my.sliit.lk"
-                value={inputs.email}
-                pattern="^[A-Za-z0-9._%+-]+@my\.sliit\.lk$"
-                title="Use your @my.sliit.lk email"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">Student ID</label>
-              <input type="text" name="studentID" placeholder="Ex: IT20000011" value={inputs.studentID} onChange={handleChange} required />
-            </div>
-            <div>
               <label className="label">Faculty</label>
               <select name="faculty" value={inputs.faculty} onChange={handleChange} required>
                 <option value="" disabled>
@@ -129,6 +159,49 @@ function Register() {
                 <option value="Humanities and sciences">Humanities and sciences</option>
                 <option value="Architecture">Architecture</option>
               </select>
+            </div>
+            <div>
+              <label className="label">Student ID</label>
+              <div className="student-id-group">
+                <span className={`student-id-prefix ${selectedFacultyRule ? 'active' : ''}`}>
+                  {selectedFacultyRule ? selectedFacultyRule.prefix : '--'}
+                </span>
+                <input
+                  type="text"
+                  name="studentID"
+                  placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'}
+                  value={inputs.studentID}
+                  onChange={handleChange}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={selectedFacultyRule ? selectedFacultyRule.digits : 0}
+                  disabled={!selectedFacultyRule}
+                  required
+                />
+              </div>
+              <small className="student-id-help">
+                {selectedFacultyRule
+                  ? `Final Student ID: ${fullStudentID || selectedFacultyRule.prefix}`
+                  : 'Choose a faculty to set your Student ID prefix'}
+              </small>
+            </div>
+            <div>
+              <label className="label">University Email</label>
+              <input
+                type="email"
+                name="email"
+                onChange={handleChange}
+                placeholder={selectedFacultyRule ? expectedUniversityEmail : 'studentID@my.sliit.lk'}
+                value={inputs.email}
+                pattern="^[A-Za-z0-9._%+-]+@my\.sliit\.lk$"
+                title="Use your @my.sliit.lk email"
+                required
+              />
+              <small className="student-id-help">
+                {selectedFacultyRule
+                  ? `Must match: ${expectedUniversityEmail}`
+                  : 'Select faculty and complete Student ID first'}
+              </small>
             </div>
             <div>
               <label className="label">Contact Number</label>

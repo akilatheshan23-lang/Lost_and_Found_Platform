@@ -96,6 +96,50 @@ select {
   font-family: inherit;
 }
 
+.student-id-group {
+  display: grid;
+  grid-template-columns: 68px 1fr;
+  border: 1px solid rgba(17, 27, 41, 0.15);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.student-id-group .student-id-prefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--reg-muted);
+  background: rgba(17, 27, 41, 0.06);
+}
+
+.student-id-group .student-id-prefix.active {
+  color: #102133;
+  background: rgba(58, 176, 176, 0.2);
+}
+
+.student-id-group input {
+  border: 0;
+  border-radius: 0;
+}
+
+.student-id-group:focus-within {
+  outline: 2px solid rgba(58, 176, 176, 0.4);
+}
+
+.student-id-group input:focus {
+  outline: none;
+}
+
+.student-id-help {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--reg-muted);
+  font-size: 0.82rem;
+}
+
 input:focus,
 select:focus {
   outline: 2px solid rgba(58, 176, 176, 0.4);
