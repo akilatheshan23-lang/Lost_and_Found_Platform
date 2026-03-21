@@ -1,0 +1,120 @@
+:root {
+  --login-ink: #111b29;
+  --login-muted: #5d6878;
+  --login-highlight: #75d6c5;
+  --login-rose: #ffc2b5;
+  --login-bg: #f8f9fc;
+}
+
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(120deg, rgba(255, 194, 181, 0.4), rgba(117, 214, 197, 0.35));
+  display: flex;
+  flex-direction: column;
+  font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.login-shell {
+  margin: auto;
+  width: min(960px, 92vw);
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 30px 80px rgba(17, 27, 41, 0.15);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  overflow: hidden;
+}
+
+.login-hero {
+  background: #111b29;
+  color: #fff;
+  padding: 48px 40px;
+  display: grid;
+  gap: 18px;
+}
+
+.login-hero h1 {
+  font-family: "Fraunces", "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  margin: 0;
+}
+
+.login-hero p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-hero ul {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+}
+
+.login-form {
+  padding: 48px 40px;
+  display: grid;
+  gap: 16px;
+}
+
+.login-error {
+  color: #d04747;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.login-form label {
+  font-weight: 600;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 27, 41, 0.15);
+  font-size: 0.95rem;
+}
+
+.login-form input:focus {
+  outline: 2px solid rgba(117, 214, 197, 0.5);
+}
+
+.login-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.login-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 28px;
+  background: var(--login-highlight);
+  color: #0f2133;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(117, 214, 197, 0.35);
+}
+
+.secondary-link {
+  color: var(--login-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .login-form,
+  .login-hero {
+    padding: 32px 24px;
+  }
+}
