@@ -1,5 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 const User = require('../Model/UserModel');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-env';
@@ -115,7 +117,7 @@ const deleteUser = async (req, res, next) => {
 }
 
 const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, totp } = req.body;
   const normalizedEmail = String(email || '').trim().toLowerCase();
 
   if (!normalizedEmail || !password) {
@@ -167,6 +169,25 @@ const loginUser = async (req, res) => {
       await user.save();
     }
 
+    // If MFA is enabled for this user (or a secret already exists), require a valid TOTP code.
+    const accountHasMfa = Boolean(user.mfaEnabled) || Boolean(user.mfaSecret);
+    if (accountHasMfa) {
+      if (!totp) {
+        return res.status(200).json({ mfaRequired: true, message: 'MFA code required' });
+      }
+
+      const verified = speakeasy.totp.verify({
+        secret: user.mfaSecret,
+        encoding: 'base32',
+        token: String(totp).trim(),
+        window: 1,
+      });
+
+      if (!verified) {
+        return res.status(401).json({ message: 'Invalid MFA code' });
+      }
+    }
+
     const safeUser = user.toObject();
     delete safeUser.password;
 
@@ -184,6 +205,83 @@ const loginUser = async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Login failed" });
+  }
+};
+
+// Generate MFA secret & QR code (stores temp secret until verified)
+const generateMfa = async (req, res) => {
+  try {
+    const user = await User.findById(req.auth.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const secret = speakeasy.generateSecret({ name: `LostFoundUM (${user.email})` });
+    user.mfaTempSecret = secret.base32;
+    await user.save();
+
+    const otpauth = secret.otpauth_url;
+    const qrData = await qrcode.toDataURL(otpauth);
+
+    return res.status(200).json({ otpauth, qr: qrData });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: 'Failed to generate MFA secret' });
+  }
+};
+
+// Verify MFA setup using temp secret and enable
+const verifyMfa = async (req, res) => {
+  const { token } = req.body;
+  try {
+    const user = await User.findById(req.auth.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.mfaTempSecret) return res.status(400).json({ message: 'No MFA setup in progress' });
+
+    const verified = speakeasy.totp.verify({
+      secret: user.mfaTempSecret,
+      encoding: 'base32',
+      token: String(token).trim(),
+      window: 1,
+    });
+
+    if (!verified) return res.status(401).json({ message: 'Invalid MFA code' });
+
+    user.mfaSecret = user.mfaTempSecret;
+    user.mfaTempSecret = undefined;
+    user.mfaEnabled = true;
+    await user.save();
+
+    return res.status(200).json({ message: 'MFA enabled' });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: 'Failed to verify MFA' });
+  }
+};
+
+// Disable MFA (requires current TOTP)
+const disableMfa = async (req, res) => {
+  const { token } = req.body;
+  try {
+    const user = await User.findById(req.auth.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.mfaEnabled || !user.mfaSecret) return res.status(400).json({ message: 'MFA is not enabled' });
+
+    const verified = speakeasy.totp.verify({
+      secret: user.mfaSecret,
+      encoding: 'base32',
+      token: String(token).trim(),
+      window: 1,
+    });
+
+    if (!verified) return res.status(401).json({ message: 'Invalid MFA code' });
+
+    user.mfaSecret = undefined;
+    user.mfaEnabled = false;
+    await user.save();
+
+    return res.status(200).json({ message: 'MFA disabled' });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: 'Failed to disable MFA' });
   }
 };
 
@@ -208,4 +306,7 @@ exports.addUser = addUser;
 exports.getById = getById;
 exports.deleteUser = deleteUser;
 exports.loginUser = loginUser;
+exports.generateMfa = generateMfa;
+exports.verifyMfa = verifyMfa;
+exports.disableMfa = disableMfa;
 exports.getSessionUser = getSessionUser;

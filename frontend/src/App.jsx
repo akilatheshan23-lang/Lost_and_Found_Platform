@@ -7,6 +7,7 @@ import UpdateUser from './Components/UpdateUser/UpdateUser.jsx'
 import Login from './Components/Login/Login.jsx'
 import UserDashboard from './Components/Dashboard/UserDashboard.jsx'
 import AdminDashboard from './Components/Dashboard/AdminDashboard.jsx'
+import MfaSettings from './Components/MFA/MfaSettings.jsx'
 import ProtectedRoute from './state/ProtectedRoute.jsx'
 import { useAuth } from './state/AuthContext.jsx'
 
@@ -33,6 +34,9 @@ function App() {
         <Route path="/users/:id" element={<UpdateUser />} />
         <Route element={<ProtectedRoute allowedRoles={['student']} />}>
           <Route path="/user-dashboard" element={<UserDashboard />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['student','admin']} />}>
+          <Route path="/mfa" element={<MfaSettings />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin-dashboard" element={<AdminDashboard />} />

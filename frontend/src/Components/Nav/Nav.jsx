@@ -1,8 +1,10 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
+import { useAuth } from '../../state/AuthContext'
 
 function Nav() {
+  const { isAuthenticated } = useAuth()
   return (
     <nav className="sticky top-0 z-50 border-b border-white/60 bg-white/75 backdrop-blur" aria-label="Primary">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 animate-soft-in">
@@ -20,8 +22,9 @@ function Nav() {
         </ul>
 
         <div className="flex items-center space-x-2 sm:space-x-3">
-          <Link to="/login" className="btn btn-secondary hidden sm:inline-flex">Login</Link>
-          <Link to="/register" className="btn btn-primary">Get Started</Link>
+          {isAuthenticated && <Link to="/mfa" className="btn btn-secondary hidden sm:inline-flex">MFA</Link>}
+          {!isAuthenticated && <Link to="/login" className="btn btn-secondary hidden sm:inline-flex">Login</Link>}
+          {!isAuthenticated && <Link to="/register" className="btn btn-primary">Get Started</Link>}
         </div>
       </div>
     </nav>

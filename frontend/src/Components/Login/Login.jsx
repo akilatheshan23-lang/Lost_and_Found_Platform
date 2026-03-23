@@ -10,6 +10,8 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [totp, setTotp] = useState('')
   const navigate = useNavigate()
   const location = useLocation()
   const { login } = useAuth()
@@ -35,22 +37,25 @@ function Login() {
     setError('')
     setIsSubmitting(true)
     try {
-      const { data } = await axios.post('http://localhost:5000/Users/login', {
-        email: normalizedEmail,
-        password,
-      })
+      const payload = { email: normalizedEmail, password }
+      if (mfaRequired) payload.totp = totp
 
-      if (!data?.user) {
+      const { data } = await axios.post('http://localhost:5000/Users/login', payload)
+
+      if (data?.mfaRequired) {
+        setMfaRequired(true)
+        setError('Enter the 6-digit code from your authenticator app')
+        return
+      }
+
+      if (!data?.user || !data?.token) {
         setError('Login response is invalid. Please try again.')
         return
       }
 
-      const token = data?.token || `legacy_${data.user?._id || normalizedEmail}_${Date.now()}`
-
-      login(token, data.user)
+      login(data.token, data.user)
 
       const fromPath = location.state?.from?.pathname
-
       if (data.user.role === 'admin') {
         navigate(fromPath === '/admin-dashboard' ? fromPath : '/admin-dashboard', { replace: true })
       } else {
@@ -107,6 +112,22 @@ function Login() {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+
+          {mfaRequired && (
+            <>
+              <label className="mt-4 block text-sm font-medium text-slate-700 inline-flex items-center gap-2">Authenticator Code</label>
+              <input
+                className="field mt-1"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="123456"
+                value={totp}
+                onChange={(e) => setTotp(e.target.value)}
+                required
+              />
+            </>
+          )}
 
           <div className="mt-6 flex items-center justify-between">
             <Link className="text-sm font-medium text-slate-500 hover:text-teal-700" to="/reset">Forgot password?</Link>

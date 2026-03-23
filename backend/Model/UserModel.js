@@ -47,6 +47,16 @@ const UserSchema = new Schema({
         type: String,
         required: true 
     },
+    mfaEnabled: {
+        type: Boolean,
+        default: false,
+    },
+    mfaSecret: {
+        type: String,
+    },
+    mfaTempSecret: {
+        type: String,
+    },
     
 }, { timestamps: true });
 

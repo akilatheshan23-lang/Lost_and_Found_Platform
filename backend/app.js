@@ -1,5 +1,7 @@
 //password = "rWqjNvO9nMZJTExM";
 
+require('dotenv').config();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const routes = require('./Routes/UserRoute');
@@ -49,8 +51,18 @@ mongoose.connect("mongodb+srv://LFadmin:rWqjNvO9nMZJTExM@cluster0.gow5pwv.mongod
 
   await seedAdmin();
 
-  app.listen(5000, () => {
-    console.log("🚀 Server running on port 5000");
+  const PORT = process.env.PORT || 5000;
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.error(`Port ${PORT} is already in use. Please stop the process using that port or set PORT to a different value.`);
+      process.exit(1);
+    }
+    console.error('Server error:', err);
+    process.exit(1);
   });
 })
 .catch((err) => console.log((err)));
