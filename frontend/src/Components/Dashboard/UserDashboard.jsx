@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../state/AuthContext'
 import Nav from '../Nav/Nav'
 import Footer from '../Footer/Footer'
-import './UserDashboard.css'
+import { Box, ClipboardList, Loader2, LogOut, SearchCheck, ShoppingBag, UserCircle2 } from 'lucide-react'
 
 function UserDashboard() {
   const { user, logout } = useAuth()
@@ -29,92 +29,94 @@ function UserDashboard() {
   ]
 
   return (
-    <div className="user-dashboard-page">
+    <div className="min-h-screen">
       <Nav />
 
-      <div className="user-dashboard">
+      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
 
-        <section className="ud-topbar">
-          <div className="ud-profile-shortcut">
-            <span className="ud-avatar">{userName.charAt(0).toUpperCase()}</span>
+        <section className="surface p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-up">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-teal-100 text-teal-700 font-semibold">{userName.charAt(0).toUpperCase()}</span>
             <div>
-              <p className="ud-profile-label">Signed in as</p>
-              <strong>{userName}</strong>
+              <p className="text-xs uppercase tracking-wide text-slate-500">Signed in as</p>
+              <strong className="text-slate-900">{userName}</strong>
             </div>
           </div>
 
-          <div className="ud-top-actions">
-            <Link className="ud-profile-link" to={user?._id ? `/users/${user._id}` : '/user-dashboard'}>
+          <div className="flex items-center gap-3">
+            <Link className="text-sm font-medium text-teal-700 hover:text-teal-800 inline-flex items-center gap-1" to={user?._id ? `/users/${user._id}` : '/user-dashboard'}>
+              <UserCircle2 size={14} />
               See Profile
             </Link>
-            <button className="ud-logout-btn" type="button" onClick={handleLogout}>
+            <button className="btn btn-secondary inline-flex items-center gap-2" type="button" onClick={handleLogout}>
+              <LogOut size={14} />
               Logout
             </button>
           </div>
         </section>
 
-        <header className="ud-header">
-          <div className="ud-title-wrap">
-            <p className="ud-kicker">Student Workspace</p>
-            <h1>Welcome back, {userName}</h1>
-            <p>Track your lost and found activity and manage marketplace posts in one place.</p>
+        <header className="surface bg-gradient-to-r from-slate-900 to-slate-700 p-6 text-white flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between animate-fade-up-delay-1">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-slate-200">Student Workspace</p>
+            <h1 className="mt-1 text-3xl font-bold">Welcome back, {userName}</h1>
+            <p className="mt-2 text-slate-200">Track your lost and found activity and manage marketplace posts in one place.</p>
           </div>
 
-          <div className="ud-actions">
-            <button className="ud-btn ud-btn-primary">Report Lost</button>
-            <button className="ud-btn ud-btn-soft">Report Found</button>
-            <button className="ud-btn ud-btn-ghost">Marketplace</button>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn bg-white text-slate-900 hover:bg-slate-100 inline-flex items-center gap-2"><SearchCheck size={15} />Report Lost</button>
+            <button className="btn bg-teal-100 text-teal-800 hover:bg-teal-200 inline-flex items-center gap-2"><Box size={15} />Report Found</button>
+            <button className="btn border border-white/40 bg-white/10 text-white hover:bg-white/20 inline-flex items-center gap-2"><ShoppingBag size={15} />Marketplace</button>
           </div>
         </header>
 
-        <section className="ud-stats-grid">
+        <section className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-fade-up-delay-2">
           {quickStats.map((stat) => (
-            <article className={`ud-stat-card ${stat.tone}`} key={stat.label}>
-              <p>{stat.label}</p>
-              <h2>{stat.value}</h2>
+            <article className="surface p-5" key={stat.label}>
+              <p className="text-sm text-slate-500">{stat.label}</p>
+              <h2 className="mt-2 text-3xl font-semibold text-slate-900">{stat.value}</h2>
             </article>
           ))}
         </section>
 
-        <section className="ud-main-grid">
+        <section className="grid gap-4 lg:grid-cols-2 animate-fade-up-delay-3">
 
-          <article className="ud-card">
-            <div className="ud-card-head">
-              <h3>Recent Activity</h3>
-              <button className="ud-link-btn">View All</button>
+          <article className="surface p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-slate-900">Recent Activity</h3>
+              <button className="text-sm font-medium text-teal-700 hover:text-teal-800 inline-flex items-center gap-1"><ClipboardList size={14} />View All</button>
             </div>
 
-            <ul className="ud-activity-list">
+            <ul className="space-y-3">
               {recentActivity.map((item) => (
-                <li key={item.title}>
+                <li key={item.title} className="rounded-lg border border-slate-100 p-3 flex items-center justify-between">
                   <div>
-                    <h4>{item.title}</h4>
-                    <span className="ud-status">{item.status}</span>
+                    <h4 className="font-medium text-slate-900">{item.title}</h4>
+                    <span className="inline-flex mt-1 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 items-center gap-1"><Loader2 size={11} />{item.status}</span>
                   </div>
 
-                  <time>{item.time}</time>
+                  <time className="text-sm text-slate-500">{item.time}</time>
                 </li>
               ))}
             </ul>
           </article>
 
-          <article className="ud-card">
-            <h3>Quick Actions</h3>
+          <article className="surface p-6">
+            <h3 className="text-xl font-semibold text-slate-900">Quick Actions</h3>
 
-            <div className="ud-quick-actions">
-              <button className="ud-action-btn">
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button className="btn btn-secondary w-full justify-start">
                 Post Lost Item
               </button>
 
-              <button className="ud-action-btn">
+              <button className="btn btn-secondary w-full justify-start">
                 Post Found Item
               </button>
 
-              <button className="ud-action-btn">
+              <button className="btn btn-secondary w-full justify-start">
                 Open Marketplace
               </button>
 
-              <button className="ud-action-btn">
+              <button className="btn btn-secondary w-full justify-start">
                 My Reports
               </button>
             </div>

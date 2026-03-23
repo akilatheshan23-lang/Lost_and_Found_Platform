@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useParams } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
+import Nav from '../Nav/Nav'
+import { Loader2, Save, UserCog } from 'lucide-react'
 
 function UpdateUser() {
 
@@ -16,6 +18,7 @@ function UpdateUser() {
   });
   const history = useNavigate();
   const id = useParams().id;
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     const fetchHandler = async () => {
@@ -66,54 +69,78 @@ function UpdateUser() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(inputs);
-    await sendRequest();
-    history("/users");
+    setIsSubmitting(true)
+    try {
+      await sendRequest();
+      history("/users");
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <div>
-      <h1>Update User</h1>
-      <form onSubmit={handleSubmit}>
-        <label>Name</label>
-        <br />
-        <input type="text" name="name" onChange={handleChange} placeholder='Name' value={inputs.name} required/>
-        <br />
-        <label>Email</label>
-        <br />
-        <input type="email" name="email" onChange={handleChange} placeholder='Email' value={inputs.email} required/>
-        <br />
-        <label>Student ID</label>
-        <br />
-        <input type="text" name="studentID" placeholder='Student ID' value={inputs.studentID} onChange={handleChange} required/>
-        <br />
-        <label>Faculty</label>
-        <br />
-        <select name="faculty" value={inputs.faculty} onChange={handleChange} required>
-          <option value="" disabled>Select faculty</option>
-          <option value="Computing">Computing</option>
-          <option value="Business">Business</option>
-          <option value="Enginering">Enginering</option>
-          <option value="Humanities and sciences">Humanities and sciences</option>
-          <option value="Architecture">Architecture</option>
-        </select>
-        <br />
-        <label>Contact Number</label>
-        <br />
-        <input type="tel" name="contactNumber" placeholder='Contact Number' value={inputs.contactNumber} onChange={handleChange} required/>
-        <br />
-        <label>Password</label>
-        <br />
-        <input type="password" name="password" placeholder='Update password (optional)' value={inputs.password} onChange={handleChange} />
-        <br />
-        <label>Confirm Password</label>
-        <br />
-        <input type="password" name="confirmPassword" placeholder='Confirm password' value={inputs.confirmPassword} onChange={handleChange} />
-        <br />
-        <small>Leave password fields empty to keep the current password.</small>
-        <br />
-        <button type='submit'>Update User</button>
-      </form>
+    <div className="min-h-screen">
+      <Nav />
+      <main className="mx-auto max-w-4xl px-4 py-10">
+        <div className="surface bg-gradient-to-r from-slate-900 to-slate-700 p-6 text-white animate-fade-up">
+          <p className="kicker text-slate-200">Account Management</p>
+          <h1 className="mt-2 text-3xl font-bold inline-flex items-center gap-2"><UserCog size={24} /> Update User</h1>
+          <p className="mt-2 text-sm text-slate-200">Edit profile details and optional credentials securely.</p>
+        </div>
+
+        <form className="surface mt-6 grid gap-4 p-6 animate-fade-up-delay-1" onSubmit={handleSubmit}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Name</label>
+              <input className="field mt-1" type="text" name="name" onChange={handleChange} placeholder='Name' value={inputs.name} required />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Email</label>
+              <input className="field mt-1" type="email" name="email" onChange={handleChange} placeholder='Email' value={inputs.email} required />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Student ID</label>
+              <input className="field mt-1" type="text" name="studentID" placeholder='Student ID' value={inputs.studentID} onChange={handleChange} required />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Faculty</label>
+              <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required>
+                <option value="" disabled>Select faculty</option>
+                <option value="Computing">Computing</option>
+                <option value="Business">Business</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Humanities and sciences">Humanities and sciences</option>
+                <option value="Architecture">Architecture</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Contact Number</label>
+              <input className="field mt-1" type="tel" name="contactNumber" placeholder='Contact Number' value={inputs.contactNumber} onChange={handleChange} required />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Password</label>
+              <input className="field mt-1" type="password" name="password" placeholder='Update password (optional)' value={inputs.password} onChange={handleChange} />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-slate-700">Confirm Password</label>
+              <input className="field mt-1" type="password" name="confirmPassword" placeholder='Confirm password' value={inputs.confirmPassword} onChange={handleChange} />
+              <small className="mt-1 block text-xs text-slate-500">Leave password fields empty to keep the current password.</small>
+            </div>
+          </div>
+
+          <div className="pt-1">
+            <button className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-70" type='submit' disabled={isSubmitting}>
+              {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Updating...</span> : <span className="inline-flex items-center gap-2"><Save size={15} /> Update User</span>}
+            </button>
+          </div>
+        </form>
+      </main>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import Nav from '../Nav/Nav'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import './Register.css'
+import { Building2, IdCard, Loader2, Lock, Mail, Phone, User } from 'lucide-react'
 
 const FACULTY_ID_RULES = {
   Computing: { prefix: 'IT', digits: 8 },
@@ -129,30 +129,28 @@ function Register() {
   }
 
   return (
-    <div className="register-page">
+    <div className="min-h-screen">
       <Nav />
-      <div className="register-shell">
-        <div className="register-hero">
-          <div className="hero-pill"><span />community verified</div>
-          <h1>Join the Lost & Found network</h1>
-          <p>
-            Create your account to publish reports, receive alerts, and track
-            recovery progress across campus.
-          </p>
+      <div className="mx-auto max-w-6xl px-4 py-10 md:py-14">
+        <div className="surface mb-6 bg-gradient-to-r from-slate-900 to-slate-700 p-7 text-white animate-fade-up">
+          <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-teal-100">community verified</div>
+          <h1 className="mt-3 text-3xl font-bold">Join the Lost & Found network</h1>
+          <p className="mt-2 max-w-2xl text-slate-200">Create your account to publish reports, receive alerts, and track recovery progress across campus.</p>
         </div>
-        <form className="register-form" onSubmit={handleSubmit}>
-          {error && <p className="error-text">{error}</p>}
-          <div className="form-grid">
+
+        <form className="surface grid gap-4 p-7 animate-fade-up-delay-1" onSubmit={handleSubmit}>
+          <h2 className="text-xl font-semibold text-slate-900">Create your account</h2>
+          {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="label">Full Name</label>
-              <input type="text" name="name" onChange={handleChange} placeholder="Full Name" value={inputs.name} required />
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><User size={15} /> Full Name</label>
+              <input className="field mt-1" type="text" name="name" onChange={handleChange} placeholder="Full Name" value={inputs.name} required />
             </div>
+
             <div>
-              <label className="label">Faculty</label>
-              <select name="faculty" value={inputs.faculty} onChange={handleChange} required>
-                <option value="" disabled>
-                  Select faculty
-                </option>
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Building2 size={15} /> Faculty</label>
+              <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required>
+                <option value="" disabled>Select faculty</option>
                 <option value="Computing">Computing</option>
                 <option value="Business">Business</option>
                 <option value="Engineering">Engineering</option>
@@ -160,76 +158,47 @@ function Register() {
                 <option value="Architecture">Architecture</option>
               </select>
             </div>
+
             <div>
-              <label className="label">Student ID</label>
-              <div className="student-id-group">
-                <span className={`student-id-prefix ${selectedFacultyRule ? 'active' : ''}`}>
-                  {selectedFacultyRule ? selectedFacultyRule.prefix : '--'}
-                </span>
-                <input
-                  type="text"
-                  name="studentID"
-                  placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'}
-                  value={inputs.studentID}
-                  onChange={handleChange}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={selectedFacultyRule ? selectedFacultyRule.digits : 0}
-                  disabled={!selectedFacultyRule}
-                  required
-                />
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><IdCard size={15} /> Student ID</label>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-700">{selectedFacultyRule ? selectedFacultyRule.prefix : '--'}</span>
+                <input className="field flex-1" type="text" name="studentID" placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'} value={inputs.studentID} onChange={handleChange} inputMode="numeric" pattern="[0-9]*" maxLength={selectedFacultyRule ? selectedFacultyRule.digits : 0} disabled={!selectedFacultyRule} required />
               </div>
-              <small className="student-id-help">
-                {selectedFacultyRule
-                  ? `Final Student ID: ${fullStudentID || selectedFacultyRule.prefix}`
-                  : 'Choose a faculty to set your Student ID prefix'}
-              </small>
+              <small className="text-xs text-slate-500">{selectedFacultyRule ? `Final Student ID: ${fullStudentID || selectedFacultyRule.prefix}` : 'Choose a faculty to set your Student ID prefix'}</small>
             </div>
+
             <div>
-              <label className="label">University Email</label>
-              <input
-                type="email"
-                name="email"
-                onChange={handleChange}
-                placeholder={selectedFacultyRule ? expectedUniversityEmail : 'studentID@my.sliit.lk'}
-                value={inputs.email}
-                pattern="^[A-Za-z0-9._%+-]+@my\.sliit\.lk$"
-                title="Use your @my.sliit.lk email"
-                required
-              />
-              <small className="student-id-help">
-                {selectedFacultyRule
-                  ? `Must match: ${expectedUniversityEmail}`
-                  : 'Select faculty and complete Student ID first'}
-              </small>
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Mail size={15} /> University Email</label>
+              <input className="field mt-1" type="email" name="email" onChange={handleChange} placeholder={selectedFacultyRule ? expectedUniversityEmail : 'studentID@my.sliit.lk'} value={inputs.email} pattern="^[A-Za-z0-9._%+-]+@my\.sliit\.lk$" title="Use your @my.sliit.lk email" required />
+              <small className="text-xs text-slate-500">{selectedFacultyRule ? `Must match: ${expectedUniversityEmail}` : 'Select faculty and complete Student ID first'}</small>
             </div>
+
             <div>
-              <label className="label">Contact Number</label>
-              <input type="tel" name="contactNumber" placeholder="Contact Number" value={inputs.contactNumber} onChange={handleChange} required />
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Phone size={15} /> Contact Number</label>
+              <input className="field mt-1" type="tel" name="contactNumber" placeholder="Contact Number" value={inputs.contactNumber} onChange={handleChange} required />
             </div>
+
             <div>
-              <label className="label">Password</label>
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={inputs.password}
-                onChange={handleChange}
-                required
-              />
-              <ul className="hint-list">
-                <li className={passwordHints.length ? 'ok' : ''}>8+ characters</li>
-                <li className={passwordHints.mix ? 'ok' : ''}>Letters & numbers mix</li>
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Password</label>
+              <input className="field mt-1" type="password" name="password" placeholder="Password" value={inputs.password} onChange={handleChange} required />
+              <ul className="mt-1 text-xs text-slate-500">
+                <li className={passwordHints.length ? 'text-green-600' : ''}>8+ characters</li>
+                <li className={passwordHints.mix ? 'text-green-600' : ''}>Letters & numbers mix</li>
               </ul>
             </div>
+
             <div>
-              <label className="label">Confirm Password</label>
-              <input type="password" name="confirmPassword" placeholder="Confirm Password" value={inputs.confirmPassword} onChange={handleChange} required />
+              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Confirm Password</label>
+              <input className="field mt-1" type="password" name="confirmPassword" placeholder="Confirm Password" value={inputs.confirmPassword} onChange={handleChange} required />
             </div>
           </div>
-          <button className="register-btn" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Registering...' : 'Create account'}
-          </button>
+
+          <div className="pt-1">
+            <button className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-70" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Registering...</span> : 'Create account'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

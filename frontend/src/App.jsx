@@ -1,5 +1,4 @@
 import React from 'react'
-import './App.css'
 import Home from './Components/Home/Home.jsx'
 import Users from './Components/UserDetails/Users.jsx'
 import { Navigate, Route, Routes } from 'react-router-dom'

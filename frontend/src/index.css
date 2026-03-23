@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--brand: #0f766e;
+}
+
+html, body, #root {
+	height: 100%;
+}
+
+body {
+	@apply antialiased text-slate-800;
+	background:
+		radial-gradient(1200px 500px at 10% -10%, rgba(20, 184, 166, 0.18), transparent 60%),
+		radial-gradient(900px 400px at 90% 0%, rgba(59, 130, 246, 0.14), transparent 60%),
+		#f8fafc;
+	font-family: Manrope, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+	h1, h2, h3 {
+		font-family: 'Space Grotesk', Manrope, ui-sans-serif, system-ui, sans-serif;
+	}
+}
+
+@layer components {
+	.btn {
+		@apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200;
+	}
+
+	.btn-primary {
+		@apply bg-teal-600 text-white shadow-sm hover:bg-teal-700 hover:shadow;
+	}
+
+	.btn-secondary {
+		@apply border border-slate-200 bg-white text-slate-700 hover:bg-slate-100;
+	}
+
+	.btn-soft {
+		@apply bg-teal-50 text-teal-700 hover:bg-teal-100;
+	}
+
+	.glass-panel {
+		@apply rounded-2xl border border-white/40 bg-white/80 shadow-lg backdrop-blur-sm;
+	}
+
+	.field {
+		@apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 outline-none transition-all duration-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-200;
+	}
+
+	.surface {
+		@apply rounded-2xl border border-slate-100 bg-white shadow-sm;
+	}
+
+	.kicker {
+		@apply text-xs uppercase tracking-[0.22em] text-slate-500;
+	}
+}
+
+@keyframes fadeUp {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes softIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+@layer utilities {
+	.animate-fade-up {
+		animation: fadeUp 0.55s ease-out both;
+	}
+
+	.animate-fade-up-delay-1 {
+		animation: fadeUp 0.55s ease-out 0.08s both;
+	}
+
+	.animate-fade-up-delay-2 {
+		animation: fadeUp 0.55s ease-out 0.16s both;
+	}
+
+	.animate-fade-up-delay-3 {
+		animation: fadeUp 0.55s ease-out 0.24s both;
+	}
+
+	.animate-soft-in {
+		animation: softIn 0.45s ease-out both;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-fade-up,
+	.animate-fade-up-delay-1,
+	.animate-fade-up-delay-2,
+	.animate-fade-up-delay-3,
+	.animate-soft-in {
+		animation: none !important;
+	}
+}
