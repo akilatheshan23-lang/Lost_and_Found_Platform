@@ -4,15 +4,22 @@ import { apiCreateFound } from "../api/found.api";
 import { useAuth } from "../auth/AuthContext";
 import { useToast } from "./Toast";
 import { fileToDataUrl } from "../utils/image";
+import {
+  getTodayDateString,
+  hasValidationErrors,
+  validateFoundPost,
+} from "../utils/postValidation";
 
 export default function CreateFoundModal({ open, onClose, onCreated }) {
   const { user } = useAuth();
   const toast = useToast();
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({ title: "", description: "", date: "" });
 
   const [imageMode, setImageMode] = useState("upload"); // upload | url
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
+  const maxFoundDate = getTodayDateString();
 
   const [form, setForm] = useState({
     title: "",
@@ -35,15 +42,16 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
         imageUrl: "",
         category: "",
         location: "",
-        date: now.toISOString().slice(0, 10),
+        date: maxFoundDate,
         time: now.toTimeString().slice(0, 5),
         userType: user?.userType || "student",
       }));
+      setErrors({ title: "", description: "", date: "" });
       setImageMode("upload");
       setImageFile(null);
       setImagePreview("");
     }
-  }, [open, user]);
+  }, [open, user, maxFoundDate]);
 
   async function onPickFile(f) {
     if (!f) return;
@@ -59,20 +67,40 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
     }
   }
 
+  function updateField(field, value) {
+    const nextForm = { ...form, [field]: value };
+    setForm(nextForm);
+
+    if (field === "title" || field === "description" || field === "date") {
+      setErrors(validateFoundPost(nextForm));
+    }
+  }
+
   async function submit(e) {
     e.preventDefault();
     if (!user) return toast.push("Login required to create posts", "warning");
+
+    const nextErrors = validateFoundPost(form);
+    setErrors(nextErrors);
+    if (hasValidationErrors(nextErrors)) {
+      toast.push(
+        nextErrors.title || nextErrors.description || nextErrors.date || "Please fix the highlighted fields.",
+        "warning"
+      );
+      return;
+    }
 
     setSaving(true);
     try {
       const foundDateISO = new Date(`${form.date}T${form.time || "00:00"}:00`).toISOString();
 
       const payload = {
-        title: form.title,
-        description: form.description,
+        title: form.title.trim(),
+        description: form.description.trim(),
         category: form.category,
-        location: form.location,
+        location: form.location.trim(),
         foundDateISO,
+        foundDateLocal: form.date,
         userType: form.userType,
         imageUrl: "",
         imageData: "",
@@ -97,28 +125,36 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
 
   return (
     <Modal open={open} onClose={onClose} title="➕ Report Found Item">
-      <form className="space-y-3" onSubmit={submit}>
-        <input
-          className="input"
-          placeholder="Item name *"
-          value={form.title}
-          onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-          required
-        />
+      <form className="space-y-4" onSubmit={submit}>
+        <div>
+          <input
+            className={`input ${errors.title ? "input-error" : ""}`}
+            placeholder="Item name *"
+            value={form.title}
+            onChange={(e) => updateField("title", e.target.value)}
+            required
+          />
+          {errors.title ? <p className="field-error">{errors.title}</p> : null}
+        </div>
 
-        <textarea
-          className="input"
-          rows={3}
-          placeholder="Description *"
-          value={form.description}
-          onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-          required
-        />
+        <div>
+          <textarea
+            className={`input min-h-[110px] ${errors.description ? "input-error" : ""}`}
+            rows={3}
+            placeholder="Description *"
+            value={form.description}
+            onChange={(e) => updateField("description", e.target.value)}
+            required
+          />
+          {errors.description ? <p className="field-error">{errors.description}</p> : null}
+        </div>
 
-        {/* Image chooser */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-3">
+        <div className="premium-section p-4">
           <div className="flex items-center justify-between gap-2">
-            <div className="font-semibold text-slate-900">📷 Item photo (optional)</div>
+            <div>
+              <div className="font-semibold text-slate-900">📷 Item photo (optional)</div>
+              <div className="text-xs text-slate-500 mt-1">Use upload or paste an image URL.</div>
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -146,7 +182,7 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
                 onChange={(e) => onPickFile(e.target.files?.[0])}
               />
               {imagePreview ? (
-                <div className="rounded-2xl overflow-hidden border border-slate-200">
+                <div className="rounded-3xl overflow-hidden border border-white/60 shadow-inner">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-[280px] object-cover" />
                 </div>
               ) : (
@@ -174,7 +210,7 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
                 onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
               />
               {form.imageUrl ? (
-                <div className="rounded-2xl overflow-hidden border border-slate-200">
+                <div className="rounded-3xl overflow-hidden border border-white/60 shadow-inner">
                   <img src={form.imageUrl} alt="Preview" className="w-full max-h-[280px] object-cover" />
                 </div>
               ) : null}
@@ -182,7 +218,7 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           <select
             className="select"
             required
@@ -216,23 +252,30 @@ export default function CreateFoundModal({ open, onClose, onCreated }) {
           required
         />
 
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            type="date"
-            className="input"
-            required
-            value={form.date}
-            onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))}
-          />
-          <input
-            type="time"
-            className="input"
-            value={form.time}
-            onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))}
-          />
+        <div>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="date"
+              className={`input ${errors.date ? "input-error" : ""}`}
+              required
+              value={form.date}
+              max={maxFoundDate}
+              onChange={(e) => updateField("date", e.target.value)}
+            />
+            <input
+              type="time"
+              className="input"
+              value={form.time}
+              onChange={(e) => setForm((p) => ({ ...p, time: e.target.value }))}
+            />
+          </div>
+          {errors.date ? <p className="field-error mt-2">{errors.date}</p> : null}
+          <p className="text-xs text-slate-500 mt-2">
+            Only today and past dates can be selected for the found date.
+          </p>
         </div>
 
-        <button disabled={saving} className="btn-primary w-full py-3">
+        <button disabled={saving} className="btn-primary w-full py-3.5">
           {saving ? "Submitting..." : "Submit for Approval"}
         </button>
         <p className="text-xs text-slate-500 text-center">

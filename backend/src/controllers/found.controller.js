@@ -1,9 +1,14 @@
 import FoundItem from "../models/FoundItem.js";
-import { foundCreateSchema } from "../utils/validators.js";
+import { foundCreateSchema, getValidationMessage } from "../utils/validators.js";
 
 export async function createFound(req, res) {
   const parsed = foundCreateSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Invalid data", issues: parsed.error.issues });
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: getValidationMessage(parsed.error, "Invalid found post data"),
+      issues: parsed.error.issues,
+    });
+  }
 
   const { title, description, imageUrl, imageData, category, location, foundDateISO, userType } = parsed.data;
 
@@ -27,7 +32,6 @@ export async function createFound(req, res) {
 export async function listFoundApproved(req, res) {
   const { cursor, limit = 10, category, userType, q } = req.query;
 
-  // Public feed should not show hidden items
   const filter = { status: "approved", hidden: { $ne: true } };
   if (category) filter.category = category;
   if (userType) filter.userType = userType;
