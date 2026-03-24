@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../../api'
 import { Loader2, PencilLine, Trash2 } from 'lucide-react'
 
 function User(props) {
@@ -11,8 +11,8 @@ function User(props) {
 
   const DeleteHandler = async () => {
     setIsDeleting(true)
-    await axios
-      .delete(`http://localhost:5000/Users/${_id}`)
+    await api
+      .delete(`/Users/${_id}`)
       .then((res) => res.data)
       .then(() => history("/users"))
       .finally(() => setIsDeleting(false));

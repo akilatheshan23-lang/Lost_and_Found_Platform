@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Nav from '../Nav/Nav'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../../api'
 import { useAuth } from '../../state/AuthContext'
 import { BellRing, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react'
 
@@ -40,7 +40,7 @@ function Login() {
       const payload = { email: normalizedEmail, password }
       if (mfaRequired) payload.totp = totp
 
-      const { data } = await axios.post('http://localhost:5000/Users/login', payload)
+      const { data } = await api.post('/Users/login', payload)
 
       if (data?.mfaRequired) {
         setMfaRequired(true)
@@ -62,7 +62,16 @@ function Login() {
         navigate(fromPath === '/user-dashboard' ? fromPath : '/user-dashboard', { replace: true })
       }
     } catch (err) {
-      setError(err?.response?.data?.message || 'Login failed')
+      console.error('Login error:', err)
+      let message = 'Login failed';
+      if (err?.response) {
+        message = err.response.data?.message || `${err.response.status} ${err.response.statusText}`;
+      } else if (err?.request) {
+        message = 'No response from server. Is the backend running?';
+      } else if (err?.message) {
+        message = err.message;
+      }
+      setError(message)
     } finally {
       setIsSubmitting(false)
     }

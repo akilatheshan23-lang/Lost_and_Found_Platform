@@ -8,6 +8,8 @@ const UserController = require('../Controllers/UserControllers');
 
 router.get('/', UserController.getAllUsers);
 router.post('/', UserController.addUser);
+router.post('/forgot', UserController.forgotPassword);
+router.post('/reset', UserController.resetPassword);
 router.post('/login', UserController.loginUser);
 router.get('/session', authMiddleware, UserController.getSessionUser);
 router.post('/mfa/generate', authMiddleware, UserController.generateMfa);

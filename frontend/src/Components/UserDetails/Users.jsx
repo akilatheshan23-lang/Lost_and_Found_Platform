@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import Nav from '../Nav/Nav'
-import axios from "axios";
+import api from '../../api'
 import User from '../User/User';
 import { AlertCircle, Loader2, Users as UsersIcon } from 'lucide-react'
 
-const URL ="http://localhost:5000/Users"
-
 const fetchHandler = async () => {
-  return await axios.get(URL).then((res) => res.data);
+  return await api.get('/Users').then((res) => res.data);
 }
 
 function Users() {

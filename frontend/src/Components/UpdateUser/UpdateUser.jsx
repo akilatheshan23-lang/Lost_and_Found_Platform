@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import axios from 'axios'
+import api from '../../api'
 import { useParams } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../Nav/Nav'
@@ -19,11 +19,12 @@ function UpdateUser() {
   const history = useNavigate();
   const id = useParams().id;
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchHandler = async () => {
-      await axios
-        .get(`http://localhost:5000/Users/${id}`)
+      await api
+        .get(`/Users/${id}`)
         .then((res) => res.data)
         .then((data) =>
           setInputs((prev) => ({
@@ -55,8 +56,8 @@ function UpdateUser() {
       payload.confirmPassword = String(inputs.confirmPassword);
     }
 
-    return await axios
-      .put(`http://localhost:5000/Users/${id}`, payload)
+    return await api
+      .put(`/Users/${id}`, payload)
       .then((res) => res.data);
   }
 
@@ -71,6 +72,15 @@ function UpdateUser() {
     e.preventDefault();
     setIsSubmitting(true)
     try {
+      // Validate contact number before sending
+      const digits = String(inputs.contactNumber || '').replace(/\D/g, '');
+      if (digits.length !== 10) {
+        setError('Contact number must be exactly 10 digits');
+        setIsSubmitting(false)
+        return
+      }
+
+      setError('')
       await sendRequest();
       history("/users");
     } finally {
@@ -89,6 +99,7 @@ function UpdateUser() {
         </div>
 
         <form className="surface mt-6 grid gap-4 p-6 animate-fade-up-delay-1" onSubmit={handleSubmit}>
+          {error && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-slate-700">Name</label>

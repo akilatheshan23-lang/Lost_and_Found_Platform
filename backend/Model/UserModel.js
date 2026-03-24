@@ -57,6 +57,12 @@ const UserSchema = new Schema({
     mfaTempSecret: {
         type: String,
     },
+    resetPasswordToken: {
+        type: String,
+    },
+    resetPasswordExpiry: {
+        type: Date,
+    },
     
 }, { timestamps: true });
 

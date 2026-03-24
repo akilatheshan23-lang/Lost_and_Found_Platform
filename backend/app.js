@@ -14,6 +14,11 @@ app.use(express.json());
 app.use(cors());
 app.use("/Users", routes);
 
+// Simple health check endpoint for diagnostics
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 //add a admin
 const bcrypt = require("bcrypt");
 const User = require("./Model/UserModel");
@@ -44,8 +49,10 @@ const seedAdmin = async () => {
   }
 };
 
-// MongoDB connection
-mongoose.connect("mongodb+srv://LFadmin:rWqjNvO9nMZJTExM@cluster0.gow5pwv.mongodb.net/Lost_And_Found")
+// MongoDB connection (use MONGODB_URI from .env when available)
+const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://LFadmin:rWqjNvO9nMZJTExM@cluster0.gow5pwv.mongodb.net/Lost_And_Found";
+
+mongoose.connect(MONGO_URI)
 .then(async () => {
   console.log("✅ Connected to MongoDB");
 
@@ -65,4 +72,9 @@ mongoose.connect("mongodb+srv://LFadmin:rWqjNvO9nMZJTExM@cluster0.gow5pwv.mongod
     process.exit(1);
   });
 })
-.catch((err) => console.log((err)));
+.catch((err) => {
+  console.error('❌ Failed to connect to MongoDB.');
+  console.error(err);
+  console.error('Hint: verify MONGODB_URI, network/DNS, and Atlas IP access list.');
+  process.exit(1);
+});

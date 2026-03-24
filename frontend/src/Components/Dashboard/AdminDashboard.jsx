@@ -1,5 +1,7 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { AlertTriangle, ClipboardCheck, LoaderCircle, Siren, UserRoundSearch } from 'lucide-react'
+import api from '../../api'
+import { Link } from 'react-router-dom'
 
 function AdminDashboard() {
   const alerts = [
@@ -13,6 +15,33 @@ function AdminDashboard() {
     { requester: 'Ishan S.', item: 'Dorm keys', status: 'awaiting call' },
     { requester: 'Lahiru P.', item: 'DSLR Camera', status: 'matched' },
   ]
+
+  const [users, setUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const [errorUsers, setErrorUsers] = useState('')
+
+  useEffect(() => {
+    let mounted = true
+    api
+      .get('/Users')
+      .then((res) => {
+        if (!mounted) return
+        setUsers(res.Users || res.data?.Users || [])
+      })
+      .catch((err) => {
+        console.error('Failed loading users for admin dashboard', err)
+        if (!mounted) return
+        setErrorUsers(err?.response?.data?.message || 'Failed to load users')
+      })
+      .finally(() => {
+        if (!mounted) return
+        setLoadingUsers(false)
+      })
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   return (
     <div className="min-h-screen px-4 py-8">
@@ -65,6 +94,55 @@ function AdminDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="surface p-6 animate-fade-up-delay-3">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-slate-900">Registered Users</h2>
+            <div className="flex items-center gap-3">
+              <Link to="/users/create" className="btn btn-primary">Create user</Link>
+              <Link to="/users" className="text-sm font-medium text-teal-700 hover:text-teal-800">Manage users</Link>
+            </div>
+          </div>
+
+          <div>
+            {loadingUsers ? (
+              <p className="text-slate-600 inline-flex items-center gap-2"><LoaderCircle size={16} className="animate-spin" /> Loading users...</p>
+            ) : errorUsers ? (
+              <p className="text-red-700">{errorUsers}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="px-3 py-3 font-medium">Name</th>
+                      <th className="px-3 py-3 font-medium">Email</th>
+                      <th className="px-3 py-3 font-medium">Student ID</th>
+                      <th className="px-3 py-3 font-medium">Faculty</th>
+                      <th className="px-3 py-3 font-medium">Contact</th>
+                      <th className="px-3 py-3 font-medium">Role</th>
+                      <th className="px-3 py-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u._id} className="border-b border-slate-100 last:border-b-0">
+                        <td className="px-3 py-3 text-slate-700">{u.name}</td>
+                        <td className="px-3 py-3 text-slate-700 break-all">{u.email}</td>
+                        <td className="px-3 py-3 text-slate-700">{u.studentID}</td>
+                        <td className="px-3 py-3 text-slate-700">{u.faculty}</td>
+                        <td className="px-3 py-3 text-slate-700">{u.contactNumber}</td>
+                        <td className="px-3 py-3 text-slate-700">{u.role}</td>
+                        <td className="px-3 py-3">
+                          <Link to={`/users/${u._id}`} className="text-teal-700 hover:underline">Edit</Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </section>
       </div>

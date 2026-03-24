@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useAuth } from '../../state/AuthContext'
-import axios from 'axios'
+import api from '../../api'
 import Nav from '../Nav/Nav'
 
 function MfaSettings() {
@@ -11,13 +11,11 @@ function MfaSettings() {
   const [code, setCode] = useState('')
   const [message, setMessage] = useState('')
 
-  const apiBase = 'http://localhost:5000/Users'
-
   const generate = async () => {
     setMessage('')
     setLoading(true)
     try {
-      const { data } = await axios.post(`${apiBase}/mfa/generate`, {}, { headers: { Authorization: `Bearer ${token}` } })
+      const { data } = await api.post('/Users/mfa/generate', {}, { headers: { Authorization: `Bearer ${token}` } })
       setQr(data.qr)
       setOtpauth(data.otpauth)
     } catch (err) {
@@ -32,9 +30,9 @@ function MfaSettings() {
     setMessage('')
     setLoading(true)
     try {
-      await axios.post(`${apiBase}/mfa/verify`, { token: code }, { headers: { Authorization: `Bearer ${token}` } })
+      await api.post('/Users/mfa/verify', { token: code }, { headers: { Authorization: `Bearer ${token}` } })
       // refresh session user
-      const { data } = await axios.get(`${apiBase}/session`, { headers: { Authorization: `Bearer ${token}` } })
+      const { data } = await api.get('/Users/session', { headers: { Authorization: `Bearer ${token}` } })
       login(token, data.user)
       setMessage('MFA enabled')
       setQr('')
@@ -54,8 +52,8 @@ function MfaSettings() {
     if (!tokenPrompt) return
     setLoading(true)
     try {
-      await axios.post(`${apiBase}/mfa/disable`, { token: tokenPrompt }, { headers: { Authorization: `Bearer ${token}` } })
-      const { data } = await axios.get(`${apiBase}/session`, { headers: { Authorization: `Bearer ${token}` } })
+      await api.post('/Users/mfa/disable', { token: tokenPrompt }, { headers: { Authorization: `Bearer ${token}` } })
+      const { data } = await api.get('/Users/session', { headers: { Authorization: `Bearer ${token}` } })
       login(token, data.user)
       setMessage('MFA disabled')
     } catch (err) {

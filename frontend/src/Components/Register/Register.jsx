@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import Nav from '../Nav/Nav'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
+import api from '../../api'
 import { Building2, IdCard, Loader2, Lock, Mail, Phone, User } from 'lucide-react'
 
 const FACULTY_ID_RULES = {
@@ -104,25 +104,41 @@ function Register() {
       return;
     }
 
+    // Validate contact number (must be 10 digits)
+    const contactDigits = String(inputs.contactNumber || '').replace(/\D/g, '');
+    if (contactDigits.length !== 10) {
+      setError('Contact number must be exactly 10 digits');
+      return;
+    }
+
     setError('');
     setIsSubmitting(true);
     try {
       await sendRequest();
       history("/users");
     } catch (err) {
-      setError(err?.response?.data?.message || 'Registration failed');
+      console.error('Registration error:', err);
+      let message = 'Registration failed';
+      if (err?.response) {
+        message = err.response.data?.message || `${err.response.status} ${err.response.statusText}`;
+      } else if (err?.request) {
+        message = 'No response from server. Is the backend running?';
+      } else if (err?.message) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }
   }
 
   const sendRequest = async () => {
-    return axios.post("http://localhost:5000/Users", {
+    return api.post('/Users', {
       name: String(inputs.name),
       email: String(inputs.email),
       studentID: String(fullStudentID),
       faculty: String(inputs.faculty),
-      contactNumber: String(inputs.contactNumber),
+      contactNumber: String(inputs.contactNumber).replace(/\D/g, ''),
       password: String(inputs.password),
       confirmPassword: String(inputs.confirmPassword),
     }).then((res) => res.data);
@@ -176,7 +192,18 @@ function Register() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Phone size={15} /> Contact Number</label>
-              <input className="field mt-1" type="tel" name="contactNumber" placeholder="Contact Number" value={inputs.contactNumber} onChange={handleChange} required />
+              <input
+                className="field mt-1"
+                type="tel"
+                name="contactNumber"
+                placeholder="Contact Number (10 digits)"
+                value={inputs.contactNumber}
+                onChange={handleChange}
+                inputMode="numeric"
+                pattern="[0-9]{10}"
+                maxLength={10}
+                required
+              />
             </div>
 
             <div>

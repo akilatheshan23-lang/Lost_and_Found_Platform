@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
+const crypto = require('crypto');
 const User = require('../Model/UserModel');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-env';
@@ -28,6 +29,12 @@ const addUser = async (req, res, next) => {
     return res.status(400).json({ message: "Passwords do not match" });
   }
 
+  // Validate contact number: require exactly 10 digits
+  const contactDigits = String(contactNumber || '').replace(/\D/g, '');
+  if (contactDigits.length !== 10) {
+    return res.status(400).json({ message: 'Contact number must be exactly 10 digits' });
+  }
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -36,7 +43,7 @@ const addUser = async (req, res, next) => {
       email,
       studentID,
       faculty,
-      contactNumber,
+      contactNumber: contactDigits,
       password: hashedPassword,
       role: role || 'student',
     });
@@ -78,8 +85,15 @@ const updateUser = async (req, res, next) => {
   if (typeof email !== 'undefined') updatePayload.email = email;
   if (typeof studentID !== 'undefined') updatePayload.studentID = studentID;
   if (typeof faculty !== 'undefined') updatePayload.faculty = faculty;
-  if (typeof contactNumber !== 'undefined') updatePayload.contactNumber = contactNumber;
   if (typeof role !== 'undefined') updatePayload.role = role;
+
+  if (typeof contactNumber !== 'undefined') {
+    const digits = String(contactNumber || '').replace(/\D/g, '');
+    if (digits.length !== 10) {
+      return res.status(400).json({ message: 'Contact number must be exactly 10 digits' });
+    }
+    updatePayload.contactNumber = digits;
+  }
 
   if (password && confirmPassword) {
     updatePayload.password = await bcrypt.hash(password, 10);
@@ -120,6 +134,8 @@ const loginUser = async (req, res) => {
   const { email, password, totp } = req.body;
   const normalizedEmail = String(email || '').trim().toLowerCase();
 
+  console.log('[auth] Login attempt for:', normalizedEmail);
+
   if (!normalizedEmail || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
@@ -139,6 +155,7 @@ const loginUser = async (req, res) => {
 
   try {
     const user = await User.findOne({ email: normalizedEmail });
+    console.log('[auth] User lookup result:', !!user);
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -158,6 +175,8 @@ const loginUser = async (req, res) => {
     const isPasswordValid = isPasswordHashed
       ? await bcrypt.compare(password, storedPassword)
       : storedPassword === password;
+
+    console.log('[auth] Password valid:', isPasswordValid, 'passwordHashed:', isPasswordHashed);
 
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -300,6 +319,68 @@ const getSessionUser = async (req, res) => {
   }
 };
 
+// Forgot password: generate a reset token and (for now) return it in response for testing
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return res.status(400).json({ message: 'Email is required' });
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // Avoid revealing whether email exists
+      return res.status(200).json({ message: 'If the email exists, a reset token was generated' });
+    }
+
+    const token = crypto.randomBytes(20).toString('hex');
+    const hashed = crypto.createHash('sha256').update(token).digest('hex');
+    user.resetPasswordToken = hashed;
+    user.resetPasswordExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save();
+
+    // In production, send `token` via email. For now return token for manual testing.
+    return res.status(200).json({ message: 'Reset token generated', token });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: 'Failed to generate reset token' });
+  }
+};
+
+// Reset password using token
+const resetPassword = async (req, res) => {
+  const { email, token, password, confirmPassword } = req.body;
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail || !token || !password || !confirmPassword) {
+    return res.status(400).json({ message: 'Email, token and new password are required' });
+  }
+  if (password !== confirmPassword) {
+    return res.status(400).json({ message: 'Passwords do not match' });
+  }
+
+  try {
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) return res.status(400).json({ message: 'Invalid token or email' });
+
+    const hashed = crypto.createHash('sha256').update(String(token)).digest('hex');
+    if (!user.resetPasswordToken || user.resetPasswordToken !== hashed) {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+    if (!user.resetPasswordExpiry || user.resetPasswordExpiry < Date.now()) {
+      return res.status(400).json({ message: 'Token has expired' });
+    }
+
+    user.password = password; // will be hashed by pre-save
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpiry = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: 'Password has been reset' });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ message: 'Failed to reset password' });
+  }
+};
+
 exports.getAllUsers = getAllUsers;
 exports.updateUser = updateUser;
 exports.addUser = addUser;
@@ -310,3 +391,5 @@ exports.generateMfa = generateMfa;
 exports.verifyMfa = verifyMfa;
 exports.disableMfa = disableMfa;
 exports.getSessionUser = getSessionUser;
+exports.forgotPassword = forgotPassword;
+exports.resetPassword = resetPassword;
