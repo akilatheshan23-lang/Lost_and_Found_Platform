@@ -29,6 +29,11 @@ const addUser = async (req, res, next) => {
     return res.status(400).json({ message: "Passwords do not match" });
   }
 
+  // Basic required fields validation
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email and password are required' });
+  }
+
   // Validate contact number: require exactly 10 digits
   const contactDigits = String(contactNumber || '').replace(/\D/g, '');
   if (contactDigits.length !== 10) {
@@ -36,22 +41,46 @@ const addUser = async (req, res, next) => {
   }
 
   try {
+    const finalRole = role || 'student';
+
+    // If creating an admin, supply fallback studentID/faculty so schema-required fields are satisfied
+    let finalStudentID = studentID;
+    let finalFaculty = faculty;
+    if (finalRole === 'admin') {
+      if (!finalStudentID) finalStudentID = `ADMIN${Date.now().toString().slice(-6)}`;
+      if (!finalFaculty) finalFaculty = 'Administration';
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
       name,
       email,
-      studentID,
-      faculty,
+      studentID: finalStudentID,
+      faculty: finalFaculty,
       contactNumber: contactDigits,
       password: hashedPassword,
-      role: role || 'student',
+      role: finalRole,
     });
     await user.save();
-    return res.status(201).json({ user });
+    const safeUser = user.toObject();
+    delete safeUser.password;
+    return res.status(201).json({ user: safeUser });
   } catch (err) {
-    console.log(err);
-    return res.status(500).json({ message: "Unable to add user" });
+    // Log minimal error server-side for diagnostics
+    console.error('addUser error:', err?.message || err);
+
+    // Detect duplicate-key errors from different driver shapes
+    const isDuplicate =
+      (err && err.code === 11000) ||
+      (err && err.errorResponse && err.errorResponse.code === 11000) ||
+      (err && typeof err.message === 'string' && err.message.toLowerCase().includes('duplicate key'));
+
+    if (isDuplicate) {
+      return res.status(409).json({ message: 'Email already exists' });
+    }
+
+    return res.status(500).json({ message: 'Unable to add user' });
   }
 }
 

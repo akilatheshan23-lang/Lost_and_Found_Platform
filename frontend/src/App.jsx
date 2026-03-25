@@ -4,7 +4,7 @@ import Users from './Components/UserDetails/Users.jsx'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Register from './Components/Register/Register.jsx'
 import UpdateUser from './Components/UpdateUser/UpdateUser.jsx'
-import CreateUser from './Components/UserDetails/CreateUser.jsx'
+// import CreateUser from './Components/UserDetails/CreateUser.jsx'
 import Login from './Components/Login/Login.jsx'
 import ForgotPassword from './Components/Login/ForgotPassword.jsx'
 import ResetPassword from './Components/Login/ResetPassword.jsx'
@@ -22,7 +22,7 @@ function App() {
   }
 
   const dashboardPath = user?.role === 'admin' ? '/admin-dashboard' : '/user-dashboard'
-  const homeElement = isAuthenticated ? <Navigate to={dashboardPath} replace /> : <Home />
+  const homeElement = <Home />
   const loginElement = isAuthenticated ? <Navigate to={dashboardPath} replace /> : <Login />
   const registerElement = isAuthenticated ? <Navigate to={dashboardPath} replace /> : <Register />
 
@@ -33,7 +33,7 @@ function App() {
         <Route path="/mainhome" element={homeElement} />
         <Route path="/users" element={<Users />} />
         <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-          <Route path="/users/create" element={<CreateUser />} />
+          <Route path="/users/create" element={<Register isAdminCreate={true} />} />
         </Route>
         <Route path="/register" element={registerElement} />
         <Route path="/login" element={loginElement} />

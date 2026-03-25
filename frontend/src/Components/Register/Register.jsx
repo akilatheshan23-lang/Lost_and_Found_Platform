@@ -12,7 +12,7 @@ const FACULTY_ID_RULES = {
   Architecture: { prefix: 'AC', digits: 8 },
 };
 
-function Register() {
+function Register({ isAdminCreate = false }) {
 
   const history = useNavigate();
   const [inputs, setInputs] = useState({
@@ -23,8 +23,10 @@ function Register() {
     contactNumber: "",
     password: "",
     confirmPassword: "",
+    role: 'student',
   });
   const [error, setError] = useState('');
+  const [contactError, setContactError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordHints, setPasswordHints] = useState({
     length: false,
@@ -69,6 +71,15 @@ function Register() {
       [name]: value,
     }));
 
+    if (name === 'contactNumber') {
+      const digits = String(value || '').replace(/\D/g, '');
+      if (digits && digits.length !== 10) {
+        setContactError('Contact number must be exactly 10 digits');
+      } else {
+        setContactError('');
+      }
+    }
+
     if (name === 'password') {
       setPasswordHints({
         length: value.length >= 8,
@@ -87,17 +98,19 @@ function Register() {
       setError('Password must include letters and numbers');
       return;
     }
-    if (!selectedFacultyRule) {
-      setError('Please select your faculty');
-      return;
-    }
-    if (inputs.studentID.length !== selectedFacultyRule.digits) {
-      setError(`Enter exactly ${selectedFacultyRule.digits} digits after ${selectedFacultyRule.prefix}`);
-      return;
-    }
-    if (inputs.email.trim().toLowerCase() !== expectedUniversityEmail.toLowerCase()) {
-      setError(`University email must be ${expectedUniversityEmail}`);
-      return;
+    if (inputs.role === 'student') {
+      if (!selectedFacultyRule) {
+        setError('Please select your faculty');
+        return;
+      }
+      if (inputs.studentID.length !== selectedFacultyRule.digits) {
+        setError(`Enter exactly ${selectedFacultyRule.digits} digits after ${selectedFacultyRule.prefix}`);
+        return;
+      }
+      if (inputs.email.trim().toLowerCase() !== expectedUniversityEmail.toLowerCase()) {
+        setError(`University email must be ${expectedUniversityEmail}`);
+        return;
+      }
     }
     if (inputs.password !== inputs.confirmPassword) {
       setError('Passwords do not match');
@@ -115,7 +128,11 @@ function Register() {
     setIsSubmitting(true);
     try {
       await sendRequest();
-      history("/users");
+      if (isAdminCreate) {
+        history('/admin-dashboard');
+      } else {
+        history('/users');
+      }
     } catch (err) {
       console.error('Registration error:', err);
       let message = 'Registration failed';
@@ -134,13 +151,14 @@ function Register() {
 
   const sendRequest = async () => {
     return api.post('/Users', {
-      name: String(inputs.name),
-      email: String(inputs.email),
+      name: String(inputs.name).trim(),
+      email: String(inputs.email).trim().toLowerCase(),
       studentID: String(fullStudentID),
       faculty: String(inputs.faculty),
       contactNumber: String(inputs.contactNumber).replace(/\D/g, ''),
       password: String(inputs.password),
       confirmPassword: String(inputs.confirmPassword),
+      role: inputs.role || 'student',
     }).then((res) => res.data);
   }
 
@@ -149,7 +167,6 @@ function Register() {
       <Nav />
       <div className="mx-auto max-w-6xl px-4 py-10 md:py-14">
         <div className="surface mb-6 bg-gradient-to-r from-slate-900 to-slate-700 p-7 text-white animate-fade-up">
-          <div className="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-teal-100">community verified</div>
           <h1 className="mt-3 text-3xl font-bold">Join the Lost & Found network</h1>
           <p className="mt-2 max-w-2xl text-slate-200">Create your account to publish reports, receive alerts, and track recovery progress across campus.</p>
         </div>
@@ -165,7 +182,7 @@ function Register() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Building2 size={15} /> Faculty</label>
-              <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required>
+              <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required={inputs.role === 'student'}>
                 <option value="" disabled>Select faculty</option>
                 <option value="Computing">Computing</option>
                 <option value="Business">Business</option>
@@ -179,7 +196,7 @@ function Register() {
               <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><IdCard size={15} /> Student ID</label>
               <div className="flex items-center gap-2 mt-1">
                 <span className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-700">{selectedFacultyRule ? selectedFacultyRule.prefix : '--'}</span>
-                <input className="field flex-1" type="text" name="studentID" placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'} value={inputs.studentID} onChange={handleChange} inputMode="numeric" pattern="[0-9]*" maxLength={selectedFacultyRule ? selectedFacultyRule.digits : 0} disabled={!selectedFacultyRule} required />
+                <input className="field flex-1" type="text" name="studentID" placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'} value={inputs.studentID} onChange={handleChange} inputMode="numeric" pattern="[0-9]*" maxLength={selectedFacultyRule ? selectedFacultyRule.digits : 0} disabled={!selectedFacultyRule} required={inputs.role === 'student'} />
               </div>
               <small className="text-xs text-slate-500">{selectedFacultyRule ? `Final Student ID: ${fullStudentID || selectedFacultyRule.prefix}` : 'Choose a faculty to set your Student ID prefix'}</small>
             </div>
@@ -204,7 +221,18 @@ function Register() {
                 maxLength={10}
                 required
               />
+              {contactError && <small className="mt-1 block text-xs text-red-700">{contactError}</small>}
             </div>
+
+            {isAdminCreate && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700">Role</label>
+                <select className="field mt-1" name="role" value={inputs.role} onChange={handleChange}>
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Password</label>

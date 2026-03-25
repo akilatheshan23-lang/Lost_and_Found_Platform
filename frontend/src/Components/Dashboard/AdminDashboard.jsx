@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { AlertTriangle, ClipboardCheck, LoaderCircle, Siren, UserRoundSearch } from 'lucide-react'
+import { AlertTriangle, ClipboardCheck, LoaderCircle, Siren, UserRoundSearch, LogOut } from 'lucide-react'
 import api from '../../api'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import Nav from '../Nav/Nav'
+import Footer from '../Footer/Footer'
+import { useAuth } from '../../state/AuthContext'
 
 function AdminDashboard() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
   const alerts = [
     { label: 'Pending verifications', value: 6, icon: UserRoundSearch },
     { label: 'Reports today', value: 31, icon: ClipboardCheck },
@@ -44,16 +54,24 @@ function AdminDashboard() {
   }, [])
 
   return (
-    <div className="min-h-screen px-4 py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="surface bg-gradient-to-r from-slate-900 to-slate-700 p-6 text-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-fade-up">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-slate-200">Admin Control</p>
-            <h1 className="mt-1 text-3xl font-bold">Campus Recovery Console</h1>
-            <p className="mt-2 text-slate-200">Monitor submissions, approve matches, and assist high priority cases.</p>
-          </div>
-          <button className="btn bg-white text-slate-900 hover:bg-slate-100">Open command center</button>
-        </header>
+    <div className="min-h-screen flex flex-col">
+      <Nav />
+      <main className="flex-1 px-4 py-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <header className="surface bg-gradient-to-r from-slate-900 to-slate-700 p-6 text-white flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-fade-up">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-slate-200">Admin Control</p>
+              <h1 className="mt-1 text-3xl font-bold">Campus Recovery Console</h1>
+              <p className="mt-2 text-slate-200">Monitor submissions, approve matches, and assist high priority cases.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to={`/users/${user?._id}`} className="btn btn-ghost bg-white/10 text-white">Edit profile</Link>
+              <button className="btn btn-secondary inline-flex items-center gap-2" type="button" onClick={handleLogout}>
+                <LogOut size={14} />
+                Logout
+              </button>
+            </div>
+          </header>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-3 animate-fade-up-delay-1">
           {alerts.map((alert) => (
@@ -145,7 +163,9 @@ function AdminDashboard() {
             )}
           </div>
         </section>
-      </div>
+        </div>
+      </main>
+      <Footer />
     </div>
   )
 }
