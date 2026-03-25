@@ -41,6 +41,7 @@ function Register({ isAdminCreate = false }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let nextValue = value;
 
     if (name === 'faculty') {
       const nextRule = FACULTY_ID_RULES[value] || null;
@@ -66,9 +67,14 @@ function Register({ isAdminCreate = false }) {
       return;
     }
 
+    // Trim email input but preserve user's casing (validation is case-insensitive)
+    if (name === 'email') {
+      nextValue = String(nextValue || '').trim();
+    }
+
     setInputs((prevState) => ({
       ...prevState,
-      [name]: value,
+      [name]: nextValue,
     }));
 
     if (name === 'contactNumber') {
@@ -172,88 +178,119 @@ function Register({ isAdminCreate = false }) {
           <p className="mt-2 max-w-2xl text-slate-200">Create your account to publish reports, receive alerts, and track recovery progress across campus.</p>
         </div>
 
-        <form className="surface grid gap-4 p-7 animate-fade-up-delay-1" onSubmit={handleSubmit}>
-          <h2 className="text-xl font-semibold text-slate-900">Create your account</h2>
-          {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><User size={15} /> Full Name</label>
-              <input className="field mt-1" type="text" name="name" onChange={handleChange} placeholder="Full Name" value={inputs.name} required />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Building2 size={15} /> Faculty</label>
-              <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required={inputs.role === 'student'}>
-                <option value="" disabled>Select faculty</option>
-                <option value="Computing">Computing</option>
-                <option value="Business">Business</option>
-                <option value="Engineering">Engineering</option>
-                <option value="Humanities and sciences">Humanities and sciences</option>
-                <option value="Architecture">Architecture</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><IdCard size={15} /> Student ID</label>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-700">{selectedFacultyRule ? selectedFacultyRule.prefix : '--'}</span>
-                <input className="field flex-1" type="text" name="studentID" placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'} value={inputs.studentID} onChange={handleChange} inputMode="numeric" pattern="[0-9]*" maxLength={selectedFacultyRule ? selectedFacultyRule.digits : 0} disabled={!selectedFacultyRule} required={inputs.role === 'student'} />
-              </div>
-              <small className="text-xs text-slate-500">{selectedFacultyRule ? `Final Student ID: ${fullStudentID || selectedFacultyRule.prefix}` : 'Choose a faculty to set your Student ID prefix'}</small>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Mail size={15} /> University Email</label>
-              <input className="field mt-1" type="email" name="email" onChange={handleChange} placeholder={selectedFacultyRule ? expectedUniversityEmail : 'studentID@my.sliit.lk'} value={inputs.email} pattern="^[A-Za-z0-9._%+-]+@my\.sliit\.lk$" title="Use your @my.sliit.lk email" required />
-              <small className="text-xs text-slate-500">{selectedFacultyRule ? `Must match: ${expectedUniversityEmail}` : 'Select faculty and complete Student ID first'}</small>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Phone size={15} /> Contact Number</label>
-              <input
-                className="field mt-1"
-                type="tel"
-                name="contactNumber"
-                placeholder="Contact Number (10 digits)"
-                value={inputs.contactNumber}
-                onChange={handleChange}
-                inputMode="numeric"
-                pattern="[0-9]{10}"
-                maxLength={10}
-                required
-              />
-              {contactError && <small className="mt-1 block text-xs text-red-700">{contactError}</small>}
-            </div>
-
-            {isAdminCreate && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700">Role</label>
-                <select className="field mt-1" name="role" value={inputs.role} onChange={handleChange}>
-                  <option value="student">Student</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Password</label>
-              <input className="field mt-1" type="password" name="password" placeholder="Password" value={inputs.password} onChange={handleChange} required />
-              <ul className="mt-1 text-xs text-slate-500">
-                <li className={passwordHints.length ? 'text-green-600' : ''}>8+ characters</li>
-                <li className={passwordHints.mix ? 'text-green-600' : ''}>Letters & numbers mix</li>
-              </ul>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Confirm Password</label>
-              <input className="field mt-1" type="password" name="confirmPassword" placeholder="Confirm Password" value={inputs.confirmPassword} onChange={handleChange} required />
-            </div>
+        <form className="surface overflow-hidden rounded-2xl shadow-lg animate-fade-up-delay-1 grid grid-cols-1 lg:grid-cols-2" onSubmit={handleSubmit}>
+          <div className="hidden lg:flex flex-col justify-center gap-4 bg-slate-900 p-10">
+            <h2 className="text-2xl font-bold text-white">Create your account</h2>
+            <p className="text-sm text-slate-200 max-w-xs">Join the Lost & Found network to publish reports, receive alerts, and manage recovered items across campus.</p>
           </div>
 
-          <div className="pt-1">
-            <button className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-70" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Registering...</span> : 'Create account'}
-            </button>
+          <div className="p-7">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 lg:hidden">Create your account</h2>
+            {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><User size={15} /> Full Name</label>
+                <input className="field mt-1" type="text" name="name" onChange={handleChange} placeholder="Full Name" value={inputs.name} required />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Building2 size={15} /> Faculty</label>
+                <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required={inputs.role === 'student'}>
+                  <option value="" disabled>Select faculty</option>
+                  <option value="Computing">Computing</option>
+                  <option value="Business">Business</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="Humanities and sciences">Humanities and sciences</option>
+                  <option value="Architecture">Architecture</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><IdCard size={15} /> Student ID</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="rounded-xl bg-slate-100 px-3 py-2.5 text-sm font-semibold text-slate-700">{selectedFacultyRule ? selectedFacultyRule.prefix : '--'}</span>
+                  <input
+                    className="field flex-1"
+                    type="text"
+                    name="studentID"
+                    placeholder={selectedFacultyRule ? `${selectedFacultyRule.digits} digits` : 'Select faculty first'}
+                    value={inputs.studentID}
+                    onChange={handleChange}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={selectedFacultyRule ? selectedFacultyRule.digits : undefined}
+                    disabled={!selectedFacultyRule && inputs.role === 'student'}
+                    required={inputs.role === 'student' && !!selectedFacultyRule}
+                  />
+                </div>
+                <small className="text-xs text-slate-500">{selectedFacultyRule ? `Final Student ID: ${fullStudentID || selectedFacultyRule.prefix}` : 'Choose a faculty to set your Student ID prefix'}</small>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Mail size={15} /> University Email</label>
+                <input
+                  className="field mt-1"
+                  type="email"
+                  name="email"
+                  onChange={handleChange}
+                  placeholder={selectedFacultyRule ? expectedUniversityEmail : 'Select faculty first'}
+                  value={inputs.email}
+                  pattern="^[A-Za-z0-9._%+-]+@my\\.sliit\\.lk$"
+                  title="Use your @my.sliit.lk email"
+                  disabled={!selectedFacultyRule && inputs.role === 'student'}
+                  required={inputs.role === 'student' && !!selectedFacultyRule}
+                />
+                <small className="text-xs text-slate-500">{selectedFacultyRule ? `Must match: ${expectedUniversityEmail}` : 'Select faculty to enable email'}</small>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Phone size={15} /> Contact Number</label>
+                <input
+                  className="field mt-1"
+                  type="tel"
+                  name="contactNumber"
+                  placeholder="Contact Number (10 digits)"
+                  value={inputs.contactNumber}
+                  onChange={handleChange}
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  required
+                />
+                {contactError && <small className="mt-1 block text-xs text-red-700">{contactError}</small>}
+              </div>
+
+              {isAdminCreate && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Role</label>
+                  <select className="field mt-1" name="role" value={inputs.role} onChange={handleChange}>
+                    <option value="student">Student</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Password</label>
+                <input className="field mt-1" type="password" name="password" placeholder="Password" value={inputs.password} onChange={handleChange} required />
+                <ul className="mt-1 text-xs text-slate-500">
+                  <li className={passwordHints.length ? 'text-green-600' : ''}>8+ characters</li>
+                  <li className={passwordHints.mix ? 'text-green-600' : ''}>Letters & numbers mix</li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Lock size={15} /> Confirm Password</label>
+                <input className="field mt-1" type="password" name="confirmPassword" placeholder="Confirm Password" value={inputs.confirmPassword} onChange={handleChange} required />
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <button className="btn btn-primary w-full rounded-xl py-4 shadow-lg disabled:cursor-not-allowed disabled:opacity-70" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 size={16} className="animate-spin" /> Registering...</span> : 'Create account'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
