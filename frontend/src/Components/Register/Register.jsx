@@ -131,7 +131,8 @@ function Register({ isAdminCreate = false }) {
       if (isAdminCreate) {
         history('/admin-dashboard');
       } else {
-        history('/users');
+        // After successful registration, send the user to the login page
+        history('/login');
       }
     } catch (err) {
       console.error('Registration error:', err);

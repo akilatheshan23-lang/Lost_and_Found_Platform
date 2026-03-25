@@ -30,7 +30,7 @@ function Login() {
       : null
 
     if (!role) {
-      setError('Use @my.sliit.lk (students) or @sliit.lk (admins)')
+      setError('Use @my.sliit.lk (Your University email)')
       return
     }
 
@@ -97,7 +97,7 @@ function Login() {
 
         <form className="surface p-7 animate-fade-up-delay-1" onSubmit={handleSubmit}>
           <h2 className="text-2xl font-bold text-slate-900">Sign in</h2>
-          <p className="mt-1 text-sm text-slate-500">Use @my.sliit.lk or @sliit.lk email.</p>
+          <p className="mt-1 text-sm text-slate-500">Use @my.sliit.lk (Your University email)</p>
 
           {error && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
           <label className="mt-5 block text-sm font-medium text-slate-700 inline-flex items-center gap-2"><Mail size={15} /> University Email</label>
@@ -108,7 +108,7 @@ function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             pattern="^[A-Za-z0-9._%+-]+@(my\.sliit\.lk|sliit\.lk)$"
-            title="Use @my.sliit.lk (students) or @sliit.lk (admins)"
+            title="Use @my.sliit.lk (Your University email)"
             required
           />
 
