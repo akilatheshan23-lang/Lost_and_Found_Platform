@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* { font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+
+.glass { background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); }
+.gradient-bg { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1e3a5f 100%); }
+.card-hover { transition: all 0.3s ease; }
+.card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+.btn-primary { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); }
+.btn-primary:hover { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); }
+.btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.btn-danger { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-approved { background: #d1fae5; color: #065f46; }
+.status-rejected { background: #fee2e2; color: #991b1b; }
+.status-collected { background: #d1fae5; color: #065f46; }
+.modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px);} to { opacity: 1; transform: translateY(0);} }
