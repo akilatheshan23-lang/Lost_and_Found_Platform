@@ -18,7 +18,10 @@ const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || '';
 app.locals.dbReady = false;
 app.locals.dbMessage = 'Database connection has not started yet';
 
-app.use(express.json());
+// Increased request size limit for base64 image uploads
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
+
 app.use(cors({
   origin: [CLIENT_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
 }));
@@ -38,6 +41,7 @@ app.get('/health', (req, res) => {
 
 const requireDb = (req, res, next) => {
   if (app.locals.dbReady) return next();
+
   return res.status(503).json({
     message: 'Database is not connected yet. Check backend/.env MONGO_URI and your MongoDB Atlas network access.',
   });
@@ -46,9 +50,28 @@ const requireDb = (req, res, next) => {
 app.use('/Users', requireDb, routes);
 app.use('/api', requireDb, unifiedRoutes);
 
+// Handle large payload errors properly
+app.use((err, req, res, next) => {
+  if (err && (err.type === 'entity.too.large' || err.name === 'PayloadTooLargeError')) {
+    return res.status(413).json({
+      message: 'Uploaded image is too large for the server request. Please choose a smaller image or use an image URL.',
+    });
+  }
+
+  if (err) {
+    console.error('Unhandled server error:', err);
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+
+  return next();
+});
+
 const seedAdmin = async () => {
   try {
     const existingAdmin = await User.findOne({ role: 'admin' });
+
     if (existingAdmin) {
       console.log('Admin already exists');
       return;
@@ -85,15 +108,19 @@ const connectToDatabase = async () => {
     await mongoose.connect(MONGO_URI, {
       serverSelectionTimeoutMS: 10000,
     });
+
     app.locals.dbReady = true;
     app.locals.dbMessage = 'Connected to MongoDB';
     console.log('Connected to MongoDB');
+
     await seedAdmin();
   } catch (err) {
     app.locals.dbReady = false;
     app.locals.dbMessage = err?.message || 'MongoDB connection failed';
+
     console.error('Failed to connect to MongoDB:', err?.message || err);
     console.error('The backend server will keep running so you can still open /health.');
+
     setTimeout(connectToDatabase, 15000);
   }
 };
@@ -123,6 +150,7 @@ server.on('error', (err) => {
     console.error(`Port ${PORT} is already in use. Change PORT in backend/.env or stop the other process.`);
     process.exit(1);
   }
+
   console.error('Server error:', err);
   process.exit(1);
 });
