@@ -2,6 +2,20 @@ const FoundItem = require("../Model/FoundItemModel");
 const Notification = require("../Model/NotificationModel");
 const User = require("../Model/UserModel");
 const { foundCreateSchema, getValidationMessage } = require("../utils/validators");
+const { buildFoundScanPdf } = require("../utils/pdfUtils");
+
+function formatPublicItem(item) {
+  return {
+    id: item._id,
+    title: item.title,
+    foundDate: item.foundDate,
+    category: item.category,
+    location: item.location,
+    status: item.status,
+    createdByName: item.createdByName,
+    qrCodeData: item.qrCodeData || "",
+  };
+}
 
 exports.createFound = async (req, res) => {
   const parsed = foundCreateSchema.safeParse(req.body);
@@ -15,6 +29,8 @@ exports.createFound = async (req, res) => {
   const { title, description, imageUrl, imageData, category, location, foundDateISO, userType } = parsed.data;
 
   try {
+    const creator = await User.findById(req.user.id).select("name");
+
     const found = await FoundItem.create({
       title,
       description,
@@ -25,7 +41,7 @@ exports.createFound = async (req, res) => {
       foundDate: new Date(foundDateISO),
       userType,
       createdBy: req.user.id,
-      createdByName: req.user.name || "User",
+      createdByName: creator?.name || "User",
       status: "pending",
     });
 
@@ -48,7 +64,10 @@ exports.listFoundApproved = async (req, res) => {
     }
     if (cursor) filter.createdAt = { $lt: new Date(cursor) };
 
-    const items = await FoundItem.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
+    const items = await FoundItem.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Number(limit))
+      .select("title description imageUrl imageData category location foundDate userType status isClaimed claimedBy createdBy createdByName createdAt updatedAt");
     const nextCursor = items.length ? items[items.length - 1].createdAt.toISOString() : null;
 
     res.json({ items, nextCursor });
@@ -64,6 +83,70 @@ exports.getFoundItemById = async (req, res) => {
     res.status(200).json(item);
   } catch (error) {
     res.status(500).json({ message: "Error fetching found item.", error: error.message });
+  }
+};
+
+exports.getFoundQr = async (req, res) => {
+  try {
+    const item = await FoundItem.findById(req.params.id);
+    if (!item) return res.status(404).json({ message: "Found item not found." });
+
+    const isOwner = String(item.createdBy) === String(req.user.id);
+    if (!isOwner) {
+      return res.status(403).json({
+        message: "Only the user who created this found post can download its QR code.",
+      });
+    }
+
+    if (item.status !== "approved" || !item.qrCodeData) {
+      return res.status(400).json({ message: "QR code is available only after approval." });
+    }
+
+    return res.status(200).json({
+      filename: `found-item-qr-${String(item._id).slice(-6)}.png`,
+      qrCodeData: item.qrCodeData,
+      scanUrl: item.qrScanUrl,
+      title: item.title,
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Error getting QR code.", error: error.message });
+  }
+};
+
+exports.getFoundScanData = async (req, res) => {
+  try {
+    const item = await FoundItem.findOne({ qrToken: req.params.token, status: "approved" }).select(
+      "title foundDate category location status createdByName qrCodeData"
+    );
+
+    if (!item) {
+      return res.status(404).json({ message: "QR record not found or no longer active." });
+    }
+
+    return res.status(200).json(formatPublicItem(item));
+  } catch (error) {
+    return res.status(500).json({ message: "Error loading QR details.", error: error.message });
+  }
+};
+
+exports.downloadFoundScanPdf = async (req, res) => {
+  try {
+    const item = await FoundItem.findOne({ qrToken: req.params.token, status: "approved" }).select(
+      "title foundDate category location status createdByName qrCodeData"
+    );
+
+    if (!item) {
+      return res.status(404).json({ message: "QR record not found or no longer active." });
+    }
+
+    const pdfBuffer = await buildFoundScanPdf(item);
+    const filename = `found-item-verification-${String(item._id).slice(-6)}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(pdfBuffer);
+  } catch (error) {
+    return res.status(500).json({ message: "Error generating PDF.", error: error.message });
   }
 };
 

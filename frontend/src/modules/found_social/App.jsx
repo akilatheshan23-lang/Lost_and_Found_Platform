@@ -3,6 +3,7 @@ import FoundFeed from "./pages/FoundFeed";
 import SocialFeed from "./pages/SocialFeed";
 import AdminPanel from "./pages/AdminPanel";
 import ClaimPlaceholder from "./pages/ClaimPlaceholder";
+import FoundScanPage from "./pages/FoundScanPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
@@ -28,15 +29,14 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/found" replace />} />
 
-          {/* App shell routes */}
           <Route element={<AppShell />}>
             <Route path="/found" element={<FoundFeed />} />
+            <Route path="/found/scan/:token" element={<FoundScanPage />} />
             <Route path="/social" element={<SocialFeed />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/claims/:foundId" element={<ClaimPlaceholder />} />
           </Route>
 
-          {/* Auth routes (no shell) */}
           <Route
             path="/login"
             element={

@@ -9,11 +9,18 @@ import { hasValidationErrors, validateSocialPost } from "../utils/postValidation
 export default function CreateSocialModal({ open, onClose, onCreated }) {
   const { user } = useAuth();
   const toast = useToast();
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState({ title: "", content: "" });
 
-  const [imageMode, setImageMode] = useState("upload"); // upload | url
+  const [saving, setSaving] = useState(false);
+  const [imageMode, setImageMode] = useState("upload");
   const [imagePreview, setImagePreview] = useState("");
+
+  const [errors, setErrors] = useState({
+    postType: "",
+    title: "",
+    content: "",
+    imageUrl: "",
+    tagsText: "",
+  });
 
   const [form, setForm] = useState({
     postType: "",
@@ -25,22 +32,35 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
 
   useEffect(() => {
     if (open) {
-      setForm({ postType: "", title: "", content: "", imageUrl: "", tagsText: "" });
-      setErrors({ title: "", content: "" });
+      setForm({
+        postType: "",
+        title: "",
+        content: "",
+        imageUrl: "",
+        tagsText: "",
+      });
+      setErrors({
+        postType: "",
+        title: "",
+        content: "",
+        imageUrl: "",
+        tagsText: "",
+      });
       setImageMode("upload");
       setImagePreview("");
     }
   }, [open]);
 
-  async function onPickFile(f) {
-    if (!f) return;
+  async function onPickFile(file) {
+    if (!file) return;
+
     try {
-      const dataUrl = await fileToDataUrl(f);
+      const dataUrl = await fileToDataUrl(file);
       setImagePreview(dataUrl);
-      toast.push("📷 Image selected", "success");
-    } catch (e) {
+      toast.push("Image selected", "success");
+    } catch (error) {
       setImagePreview("");
-      toast.push(e?.message || "Invalid image", "error");
+      toast.push(error?.message || "Invalid image", "error");
     }
   }
 
@@ -48,24 +68,50 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
     const nextForm = { ...form, [field]: value };
     setForm(nextForm);
 
-    if (field === "title" || field === "content") {
-      const nextErrors = validateSocialPost(nextForm);
-      setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
-    }
+    const nextErrors = validateSocialPost(nextForm, {
+      requirePostType: true,
+      imageMode,
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: nextErrors[field] || "",
+      postType: field === "postType" ? nextErrors.postType : prev.postType,
+      imageUrl: field === "imageUrl" ? nextErrors.imageUrl : prev.imageUrl,
+      tagsText: field === "tagsText" ? nextErrors.tagsText : prev.tagsText,
+    }));
   }
 
   async function submit(e) {
     e.preventDefault();
-    if (!user) return toast.push("Login required to create posts", "warning");
 
-    const nextErrors = validateSocialPost(form);
+    if (!user) {
+      toast.push("Login required to create posts", "warning");
+      return;
+    }
+
+    const nextErrors = validateSocialPost(form, {
+      requirePostType: true,
+      imageMode,
+    });
+
     setErrors(nextErrors);
+
     if (hasValidationErrors(nextErrors)) {
-      toast.push(nextErrors.title || nextErrors.content || "Please fix the highlighted fields.", "warning");
+      toast.push(
+        nextErrors.postType ||
+          nextErrors.title ||
+          nextErrors.content ||
+          nextErrors.imageUrl ||
+          nextErrors.tagsText ||
+          "Please fix the highlighted fields.",
+        "warning"
+      );
       return;
     }
 
     setSaving(true);
+
     try {
       const tags = form.tagsText
         ? form.tagsText.split(",").map((t) => t.trim()).filter(Boolean)
@@ -80,16 +126,19 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
         imageData: "",
       };
 
-      if (imageMode === "url") payload.imageUrl = form.imageUrl || "";
-      else payload.imageData = imagePreview || "";
+      if (imageMode === "url") {
+        payload.imageUrl = form.imageUrl.trim();
+      } else {
+        payload.imageData = imagePreview || "";
+      }
 
       await apiCreateSocial(payload);
 
-      toast.push("✅ Submitted for admin approval", "success");
-      onClose();
+      toast.push("Submitted for admin approval", "success");
+      onClose?.();
       onCreated?.();
-    } catch (e2) {
-      toast.push(e2?.response?.data?.message || "Failed to submit", "error");
+    } catch (error) {
+      toast.push(error?.response?.data?.message || "Failed to submit", "error");
     } finally {
       setSaving(false);
     }
@@ -98,18 +147,21 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
   return (
     <Modal open={open} onClose={onClose} title="📝 Create New Post">
       <form className="space-y-4" onSubmit={submit}>
-        <select
-          className="select"
-          required
-          value={form.postType}
-          onChange={(e) => setForm((p) => ({ ...p, postType: e.target.value }))}
-        >
-          <option value="">Select post type *</option>
-          <option value="announcement">📢 Announcement</option>
-          <option value="event">🎉 Event</option>
-          <option value="update">📌 Update</option>
-          <option value="general">💬 General</option>
-        </select>
+        <div>
+          <select
+            className={`select ${errors.postType ? "input-error" : ""}`}
+            value={form.postType}
+            onChange={(e) => updateField("postType", e.target.value)}
+            required
+          >
+            <option value="">Select post type *</option>
+            <option value="announcement">📢 Announcement</option>
+            <option value="event">🎉 Event</option>
+            <option value="update">📌 Update</option>
+            <option value="general">💬 General</option>
+          </select>
+          {errors.postType ? <p className="field-error">{errors.postType}</p> : null}
+        </div>
 
         <div>
           <input
@@ -140,6 +192,7 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
               <div className="font-semibold text-slate-900">📷 Post image (optional)</div>
               <div className="text-xs text-slate-500 mt-1">Use upload or paste an image URL.</div>
             </div>
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -148,6 +201,7 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
               >
                 Upload
               </button>
+
               <button
                 type="button"
                 onClick={() => setImageMode("url")}
@@ -166,6 +220,7 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
                 className="input"
                 onChange={(e) => onPickFile(e.target.files?.[0])}
               />
+
               {imagePreview ? (
                 <div className="rounded-3xl overflow-hidden border border-white/60 shadow-inner">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-[280px] object-cover" />
@@ -173,6 +228,7 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
               ) : (
                 <div className="text-xs text-slate-500">Choose an image under 1.5MB.</div>
               )}
+
               {imagePreview ? (
                 <button type="button" className="btn-secondary" onClick={() => setImagePreview("")}>
                   Remove image
@@ -182,11 +238,13 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
           ) : (
             <div className="mt-3 space-y-2">
               <input
-                className="input"
+                className={`input ${errors.imageUrl ? "input-error" : ""}`}
                 placeholder="Image URL"
                 value={form.imageUrl}
-                onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
+                onChange={(e) => updateField("imageUrl", e.target.value)}
               />
+              {errors.imageUrl ? <p className="field-error">{errors.imageUrl}</p> : null}
+
               {form.imageUrl ? (
                 <div className="rounded-3xl overflow-hidden border border-white/60 shadow-inner">
                   <img src={form.imageUrl} alt="Preview" className="w-full max-h-[280px] object-cover" />
@@ -196,16 +254,20 @@ export default function CreateSocialModal({ open, onClose, onCreated }) {
           )}
         </div>
 
-        <input
-          className="input"
-          placeholder="Tags (comma separated) e.g. exam, important"
-          value={form.tagsText}
-          onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
-        />
+        <div>
+          <input
+            className={`input ${errors.tagsText ? "input-error" : ""}`}
+            placeholder="Tags (comma separated) e.g. exam, important"
+            value={form.tagsText}
+            onChange={(e) => updateField("tagsText", e.target.value)}
+          />
+          {errors.tagsText ? <p className="field-error">{errors.tagsText}</p> : null}
+        </div>
 
         <button disabled={saving} className="btn-success w-full py-3.5">
           {saving ? "Submitting..." : "Submit for Approval"}
         </button>
+
         <p className="text-xs text-slate-500 text-center">
           After admin approval, your post will appear in the feed.
         </p>

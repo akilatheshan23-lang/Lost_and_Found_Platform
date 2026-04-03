@@ -12,14 +12,46 @@ function typeBadge(type) {
 }
 
 function typeIcon(type) {
-  const icons = { announcement: "📢", event: "🎉", update: "📌", general: "💬" };
+  const icons = {
+    announcement: "📢",
+    event: "🎉",
+    update: "📌",
+    general: "💬",
+  };
   return icons[type] || "💬";
 }
 
 export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, onLike }) {
   const { user } = useAuth();
-  const canManage = user && (user.id === post.createdBy || user.isAdmin);
-  const timeLabel = useMemo(() => new Date(post.createdAt).toLocaleString(), [post.createdAt]);
+
+  const currentUserId = user?._id || user?.id || "";
+  const currentUserName = String(user?.name || "").trim().toLowerCase();
+
+  const postOwnerId =
+    typeof post.createdBy === "object"
+      ? post.createdBy?._id || post.createdBy?.id || ""
+      : post.createdBy || "";
+
+  const postOwnerName = String(post.createdByName || "").trim().toLowerCase();
+
+  const isAdmin = user?.role === "admin" || user?.isAdmin === true;
+
+  const isOwnerById =
+    Boolean(currentUserId) && Boolean(postOwnerId) && String(currentUserId) === String(postOwnerId);
+
+  const isOwnerByNameFallback =
+    !postOwnerId && Boolean(currentUserName) && Boolean(postOwnerName) && currentUserName === postOwnerName;
+
+  const canManage = Boolean(user) && (isAdmin || isOwnerById || isOwnerByNameFallback);
+
+  const timeLabel = useMemo(() => {
+    try {
+      return new Date(post.createdAt).toLocaleString();
+    } catch {
+      return "Unknown time";
+    }
+  }, [post.createdAt]);
+
   const imgSrc = post.imageData || post.imageUrl || "";
 
   return (
@@ -30,12 +62,17 @@ export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, o
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-50 to-fuchsia-100 text-2xl ring-1 ring-indigo-100">
               {typeIcon(post.postType)}
             </div>
+
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="truncate font-semibold text-slate-900">{post.createdByName}</div>
+                <div className="truncate font-semibold text-slate-900">
+                  {post.createdByName || "User"}
+                </div>
+
                 <span className={`rounded-full border px-2.5 py-1 text-xs ${typeBadge(post.postType)}`}>
                   {post.postType}
                 </span>
+
                 <span className="text-sm text-slate-400">•</span>
                 <span className="text-sm text-slate-500">{timeLabel}</span>
               </div>
@@ -44,8 +81,23 @@ export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, o
 
           {canManage ? (
             <div className="flex gap-2">
-              <button onClick={() => onEdit(post)} className="btn-secondary px-3">✏️</button>
-              <button onClick={() => onDelete(post)} className="btn-danger px-3">🗑️</button>
+              <button
+                type="button"
+                onClick={() => onEdit?.(post)}
+                className="btn-secondary px-3"
+                title="Edit post"
+              >
+                ✏️
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onDelete?.(post)}
+                className="btn-danger px-3"
+                title="Delete post"
+              >
+                🗑️
+              </button>
             </div>
           ) : null}
         </div>
@@ -57,26 +109,49 @@ export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, o
 
         {imgSrc ? (
           <div className="overflow-hidden rounded-3xl border border-white/70 shadow-inner">
-            <img src={imgSrc} alt={post.title} className="max-h-[420px] w-full object-cover" loading="lazy" />
+            <img
+              src={imgSrc}
+              alt={post.title || "Post image"}
+              className="max-h-[420px] w-full object-cover"
+              loading="lazy"
+            />
           </div>
         ) : null}
 
         {post.tags?.length ? (
           <div className="flex flex-wrap gap-2">
             {post.tags.map((t) => (
-              <span key={t} className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-sm text-indigo-700">#{t}</span>
+              <span
+                key={t}
+                className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-sm text-indigo-700"
+              >
+                #{t}
+              </span>
             ))}
           </div>
         ) : null}
 
         <div className="flex items-center gap-6 border-t border-slate-100 pt-3">
-          <button onClick={() => onLike(post)} className="flex items-center gap-2 text-slate-600 hover:text-rose-600">
+          <button
+            type="button"
+            onClick={() => onLike?.(post)}
+            className="flex items-center gap-2 text-slate-600 hover:text-rose-600"
+          >
             ❤️ <span>{post.likes || 0}</span>
           </button>
-          <button onClick={() => onOpenDetail(post)} className="flex items-center gap-2 text-slate-600 hover:text-slate-900">
+
+          <button
+            type="button"
+            onClick={() => onOpenDetail?.(post)}
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900"
+          >
             💬 <span>Details</span>
           </button>
-          <button className="flex items-center gap-2 text-slate-600 hover:text-emerald-700">
+
+          <button
+            type="button"
+            className="flex items-center gap-2 text-slate-600 hover:text-emerald-700"
+          >
             🔗 <span>Share</span>
           </button>
         </div>

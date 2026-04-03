@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const { uploadLost, uploadMarketplace } = require("../middleware/upload"); // no need for found/social upload since they are base64 string Zod now!
+const { uploadLost, uploadMarketplace } = require("../middleware/upload");
 
 const lostCtrl = require("../Controllers/LostItemController");
 const foundCtrl = require("../Controllers/FoundItemController");
@@ -18,24 +18,24 @@ router.post("/lost", auth, uploadLost.single("image"), lostCtrl.createLostItem);
 router.patch("/lost/:id/status", auth, lostCtrl.updateLostStatus);
 
 // --- FOUND ITEMS ---
-// Matched exactly to `apiFoundFeed` / `apiCreateFound` frontend behavior
 router.get("/found", foundCtrl.listFoundApproved);
 router.post("/found", auth, foundCtrl.createFound);
+router.get("/found/scan/:token", foundCtrl.getFoundScanData);
+router.get("/found/scan/:token/pdf", foundCtrl.downloadFoundScanPdf);
+router.get("/found/:id/qr", auth, foundCtrl.getFoundQr);
 router.get("/found/:id", foundCtrl.getFoundItemById);
 router.patch("/found/:id/approve", auth, foundCtrl.approveFoundItem);
 router.patch("/found/:id/reject", auth, foundCtrl.rejectFoundItem);
 
 // --- CLAIMS (Only for Found Items) ---
-// Matched exactly to `createClaim` frontend behavior (`POST /api/claims`, body: { claimItemId: ...})
 router.post("/claims", auth, claimCtrl.submitClaim);
 router.get("/claims", auth, claimCtrl.getClaims);
 router.get("/claims/:id", auth, claimCtrl.getClaimById);
 router.patch("/claims/:id/status", auth, claimCtrl.updateClaimStatus);
 router.patch("/claims/:id/feedback", auth, claimCtrl.submitFeedback);
-router.get("/claims/:id/document", claimCtrl.downloadApprovalPdf); // Matched to `approvalPdfUrl`
+router.get("/claims/:id/document", claimCtrl.downloadApprovalPdf);
 
 // --- SOCIAL FEED ---
-// Matched exactly to `apiSocialFeed` / `apiCreateSocial` etc.
 router.get("/social", socialCtrl.listSocialApproved);
 router.post("/social", auth, socialCtrl.createSocial);
 router.put("/social/:id", auth, socialCtrl.updateSocial);
