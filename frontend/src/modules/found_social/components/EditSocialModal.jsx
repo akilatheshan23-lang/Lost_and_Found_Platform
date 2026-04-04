@@ -7,24 +7,41 @@ import { hasValidationErrors, validateSocialPost } from "../utils/postValidation
 
 export default function EditSocialModal({ open, onClose, post, onSaved }) {
   const toast = useToast();
-  const [saving, setSaving] = useState(false);
-  const [errors, setErrors] = useState({ title: "", content: "" });
 
-  const [imageMode, setImageMode] = useState("url"); // upload | url
+  const [saving, setSaving] = useState(false);
+  const [imageMode, setImageMode] = useState("url");
   const [imagePreview, setImagePreview] = useState("");
 
-  const [form, setForm] = useState({ title: "", content: "", imageUrl: "", tagsText: "" });
+  const [errors, setErrors] = useState({
+    title: "",
+    content: "",
+    imageUrl: "",
+    tagsText: "",
+  });
+
+  const [form, setForm] = useState({
+    title: "",
+    content: "",
+    imageUrl: "",
+    tagsText: "",
+  });
 
   useEffect(() => {
     if (open && post) {
-      const nextForm = {
+      setForm({
         title: post.title || "",
         content: post.content || "",
         imageUrl: post.imageUrl || "",
         tagsText: (post.tags || []).join(", "),
-      };
-      setForm(nextForm);
-      setErrors({ title: "", content: "" });
+      });
+
+      setErrors({
+        title: "",
+        content: "",
+        imageUrl: "",
+        tagsText: "",
+      });
+
       if (post.imageData) {
         setImageMode("upload");
         setImagePreview(post.imageData);
@@ -35,15 +52,16 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
     }
   }, [open, post]);
 
-  async function onPickFile(f) {
-    if (!f) return;
+  async function onPickFile(file) {
+    if (!file) return;
+
     try {
-      const dataUrl = await fileToDataUrl(f);
+      const dataUrl = await fileToDataUrl(file);
       setImagePreview(dataUrl);
-      toast.push("📷 Image selected", "success");
-    } catch (e) {
+      toast.push("Image selected", "success");
+    } catch (error) {
       setImagePreview("");
-      toast.push(e?.message || "Invalid image", "error");
+      toast.push(error?.message || "Invalid image", "error");
     }
   }
 
@@ -51,22 +69,41 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
     const nextForm = { ...form, [field]: value };
     setForm(nextForm);
 
-    if (field === "title" || field === "content") {
-      const nextErrors = validateSocialPost(nextForm);
-      setErrors((prev) => ({ ...prev, [field]: nextErrors[field] }));
-    }
+    const nextErrors = validateSocialPost(nextForm, {
+      imageMode,
+    });
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: nextErrors[field] || "",
+      imageUrl: field === "imageUrl" ? nextErrors.imageUrl : prev.imageUrl,
+      tagsText: field === "tagsText" ? nextErrors.tagsText : prev.tagsText,
+    }));
   }
 
   async function submit(e) {
     e.preventDefault();
-    const nextErrors = validateSocialPost(form);
+
+    const nextErrors = validateSocialPost(form, {
+      imageMode,
+    });
+
     setErrors(nextErrors);
+
     if (hasValidationErrors(nextErrors)) {
-      toast.push(nextErrors.title || nextErrors.content || "Please fix the highlighted fields.", "warning");
+      toast.push(
+        nextErrors.title ||
+          nextErrors.content ||
+          nextErrors.imageUrl ||
+          nextErrors.tagsText ||
+          "Please fix the highlighted fields.",
+        "warning"
+      );
       return;
     }
 
     setSaving(true);
+
     try {
       const tags = form.tagsText
         ? form.tagsText.split(",").map((t) => t.trim()).filter(Boolean)
@@ -76,22 +113,23 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
         title: form.title.trim(),
         content: form.content.trim(),
         tags,
+        imageUrl: "",
+        imageData: "",
       };
 
       if (imageMode === "url") {
-        payload.imageUrl = form.imageUrl || "";
-        payload.imageData = "";
+        payload.imageUrl = form.imageUrl.trim();
       } else {
         payload.imageData = imagePreview || "";
-        payload.imageUrl = "";
       }
 
       await apiUpdateSocial(post._id, payload);
-      toast.push("✅ Post updated", "success");
-      onClose();
+
+      toast.push("Post updated", "success");
+      onClose?.();
       onSaved?.();
-    } catch (e2) {
-      toast.push(e2?.response?.data?.message || "Failed to update", "error");
+    } catch (error) {
+      toast.push(error?.response?.data?.message || "Failed to update", "error");
     } finally {
       setSaving(false);
     }
@@ -129,6 +167,7 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
               <div className="font-semibold text-slate-900">📷 Post image</div>
               <div className="text-xs text-slate-500 mt-1">Switch between upload and image URL anytime.</div>
             </div>
+
             <div className="flex gap-2">
               <button
                 type="button"
@@ -137,6 +176,7 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
               >
                 Upload
               </button>
+
               <button
                 type="button"
                 onClick={() => setImageMode("url")}
@@ -149,7 +189,13 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
 
           {imageMode === "upload" ? (
             <div className="mt-3 space-y-2">
-              <input type="file" accept="image/*" className="input" onChange={(e) => onPickFile(e.target.files?.[0])} />
+              <input
+                type="file"
+                accept="image/*"
+                className="input"
+                onChange={(e) => onPickFile(e.target.files?.[0])}
+              />
+
               {imagePreview ? (
                 <div className="rounded-3xl overflow-hidden border border-white/60 shadow-inner">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-[280px] object-cover" />
@@ -157,6 +203,7 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
               ) : (
                 <div className="text-xs text-slate-500">Choose an image under 1.5MB.</div>
               )}
+
               {imagePreview ? (
                 <button type="button" className="btn-secondary" onClick={() => setImagePreview("")}>
                   Remove image
@@ -166,11 +213,13 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
           ) : (
             <div className="mt-3 space-y-2">
               <input
-                className="input"
+                className={`input ${errors.imageUrl ? "input-error" : ""}`}
                 placeholder="Image URL"
                 value={form.imageUrl}
-                onChange={(e) => setForm((p) => ({ ...p, imageUrl: e.target.value }))}
+                onChange={(e) => updateField("imageUrl", e.target.value)}
               />
+              {errors.imageUrl ? <p className="field-error">{errors.imageUrl}</p> : null}
+
               {form.imageUrl ? (
                 <div className="rounded-3xl overflow-hidden border border-white/60 shadow-inner">
                   <img src={form.imageUrl} alt="Preview" className="w-full max-h-[280px] object-cover" />
@@ -180,12 +229,15 @@ export default function EditSocialModal({ open, onClose, post, onSaved }) {
           )}
         </div>
 
-        <input
-          className="input"
-          placeholder="Tags (comma separated)"
-          value={form.tagsText}
-          onChange={(e) => setForm((p) => ({ ...p, tagsText: e.target.value }))}
-        />
+        <div>
+          <input
+            className={`input ${errors.tagsText ? "input-error" : ""}`}
+            placeholder="Tags (comma separated)"
+            value={form.tagsText}
+            onChange={(e) => updateField("tagsText", e.target.value)}
+          />
+          {errors.tagsText ? <p className="field-error">{errors.tagsText}</p> : null}
+        </div>
 
         <button disabled={saving} className="btn-primary w-full py-3.5">
           {saving ? "Saving..." : "Save changes"}

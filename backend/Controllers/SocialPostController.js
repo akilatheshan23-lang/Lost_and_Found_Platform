@@ -1,11 +1,12 @@
 const SocialPost = require("../Model/SocialPostModel");
-const Notification = require("../Model/NotificationModel");
+const User = require("../Model/UserModel");
 const { getValidationMessage, socialCreateSchema, socialUpdateSchema } = require("../utils/validators");
 
 const EDIT_LIMIT_MINUTES = 30;
 
 exports.createSocial = async (req, res) => {
   const parsed = socialCreateSchema.safeParse(req.body);
+
   if (!parsed.success) {
     return res.status(400).json({
       message: getValidationMessage(parsed.error, "Invalid social post data"),
@@ -16,6 +17,8 @@ exports.createSocial = async (req, res) => {
   const { postType, title, content, imageUrl, imageData, tags } = parsed.data;
 
   try {
+    const creator = await User.findById(req.user.id).select("name");
+
     const post = await SocialPost.create({
       postType,
       title,
@@ -24,7 +27,7 @@ exports.createSocial = async (req, res) => {
       imageData: imageData || "",
       tags: Array.isArray(tags) ? tags : [],
       createdBy: req.user.id,
-      createdByName: req.user.name || "User",
+      createdByName: creator?.name || "User",
       status: req.user.role === "admin" ? "approved" : "pending",
     });
 
@@ -39,10 +42,15 @@ exports.listSocialApproved = async (req, res) => {
     const { cursor, limit = 10, type } = req.query;
 
     const filter = { status: "approved", hidden: false };
+
     if (type) filter.postType = type;
     if (cursor) filter.createdAt = { $lt: new Date(cursor) };
 
-    const items = await SocialPost.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
+    const items = await SocialPost.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Number(limit))
+      .select("postType title content imageUrl imageData tags status hidden createdBy createdByName likes createdAt updatedAt");
+
     const nextCursor = items.length ? items[items.length - 1].createdAt.toISOString() : null;
 
     res.json({ items, nextCursor });
@@ -53,6 +61,7 @@ exports.listSocialApproved = async (req, res) => {
 
 exports.updateSocial = async (req, res) => {
   const parsed = socialUpdateSchema.safeParse(req.body);
+
   if (!parsed.success) {
     return res.status(400).json({
       message: getValidationMessage(parsed.error, "Invalid social post data"),
@@ -63,26 +72,35 @@ exports.updateSocial = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await SocialPost.findById(id);
+
     if (!post) return res.status(404).json({ message: "Not found" });
 
-    const isOwner = post.createdBy.toString() === req.user.id;
-    if (!isOwner && req.user.role !== "admin") return res.status(403).json({ message: "Not allowed" });
+    const isOwner = String(post.createdBy) === String(req.user.id);
+    const isAdmin = req.user.role === "admin";
 
-    if (isOwner && req.user.role !== "admin") {
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    if (isOwner && !isAdmin) {
       const diffMins = (Date.now() - post.createdAt.getTime()) / 60000;
       if (diffMins > EDIT_LIMIT_MINUTES) {
-        return res.status(403).json({ message: `Edit limit exceeded (${EDIT_LIMIT_MINUTES} mins)` });
+        return res.status(403).json({
+          message: `Edit limit exceeded (${EDIT_LIMIT_MINUTES} mins)`,
+        });
       }
     }
 
     const { title, content, imageUrl, imageData, tags } = parsed.data;
+
     if (title !== undefined) post.title = title;
     if (content !== undefined) post.content = content;
     if (imageUrl !== undefined) post.imageUrl = imageUrl;
     if (imageData !== undefined) post.imageData = imageData;
-    if (tags !== undefined) post.tags = Array.isArray(tags) ? tags : post.tags;
+    if (tags !== undefined) post.tags = Array.isArray(tags) ? tags : [];
 
     await post.save();
+
     res.json(post);
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -93,12 +111,18 @@ exports.deleteSocial = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await SocialPost.findById(id);
+
     if (!post) return res.status(404).json({ message: "Not found" });
 
-    const isOwner = post.createdBy.toString() === req.user.id;
-    if (!isOwner && req.user.role !== "admin") return res.status(403).json({ message: "Not allowed" });
+    const isOwner = String(post.createdBy) === String(req.user.id);
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
 
     await post.deleteOne();
+
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -109,10 +133,12 @@ exports.likeSocial = async (req, res) => {
   try {
     const { id } = req.params;
     const post = await SocialPost.findById(id);
+
     if (!post) return res.status(404).json({ message: "Not found" });
 
     post.likes = (post.likes || 0) + 1;
     await post.save();
+
     res.json({ likes: post.likes });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });

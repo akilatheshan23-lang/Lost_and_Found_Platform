@@ -2,6 +2,8 @@ const FoundItem = require("../Model/FoundItemModel");
 const SocialPost = require("../Model/SocialPostModel");
 const MarketplaceItem = require("../Model/MarketplaceItemModel");
 const User = require("../Model/UserModel");
+const { generateFoundQrToken, buildFoundQrCodeData, dataUrlToBuffer } = require("../utils/foundQrUtils");
+const { sendFoundQrEmail } = require("../utils/emailUtils");
 
 exports.getPending = async (req, res) => {
   try {
@@ -59,7 +61,7 @@ exports.getStats = async (req, res) => {
         marketplace: {
           total: marketplaceTotal,
           pending: marketplacePending,
-        }
+        },
       },
       recent: {
         found: recentFound,
@@ -74,8 +76,56 @@ exports.getStats = async (req, res) => {
 
 exports.approveFound = async (req, res) => {
   try {
-    const item = await FoundItem.findByIdAndUpdate(req.params.id, { status: "approved" }, { new: true });
-    res.status(200).json({ message: "Approved successfully", item });
+    const item = await FoundItem.findById(req.params.id);
+    if (!item) {
+      return res.status(404).json({ message: "Found item not found" });
+    }
+
+    item.status = "approved";
+
+    if (!item.qrToken) {
+      item.qrToken = generateFoundQrToken();
+    }
+
+    const qr = await buildFoundQrCodeData(item.qrToken);
+    item.qrCodeData = qr.qrCodeData;
+    item.qrScanUrl = qr.scanUrl;
+    item.qrGeneratedAt = new Date();
+
+    const creator = await User.findById(item.createdBy).select("name email");
+    let mailSent = false;
+    let mailFallbackPath = "";
+
+    if ((!item.createdByName || item.createdByName === "User") && creator?.name) {
+      item.createdByName = creator.name;
+    }
+
+    if (creator?.email) {
+      const qrPngBuffer = dataUrlToBuffer(qr.qrCodeData);
+      const mailResult = await sendFoundQrEmail({
+        to: creator.email,
+        userName: creator.name || item.createdByName,
+        itemTitle: item.title,
+        scanUrl: qr.scanUrl,
+        qrPngBuffer,
+        filename: `found-item-qr-${String(item._id).slice(-6)}.png`,
+      });
+      mailSent = mailResult.sent;
+      mailFallbackPath = mailResult.fallbackPath || "";
+      item.qrEmailSentAt = new Date();
+      item.qrEmailFallbackPath = mailFallbackPath;
+    }
+
+    await item.save();
+
+    res.status(200).json({
+      message: "Approved successfully. QR generated and email process completed.",
+      item,
+      qrGenerated: true,
+      qrScanUrl: item.qrScanUrl,
+      mailSent,
+      mailFallbackPath,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error approving", error: error.message });
   }
@@ -170,7 +220,6 @@ exports.approveMarketplace = async (req, res) => {
 
 exports.rejectMarketplace = async (req, res) => {
   try {
-    // If rejected, we simply delete the pending listing
     await MarketplaceItem.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Rejected and deleted successfully" });
   } catch (error) {
