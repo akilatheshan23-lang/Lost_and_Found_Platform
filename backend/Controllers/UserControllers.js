@@ -61,6 +61,8 @@ const addUser = async (req, res, next) => {
       contactNumber: contactDigits,
       password: hashedPassword,
       role: finalRole,
+      lastProfileUpdatedAt: Date.now(),
+      actions: [{ type: 'created', actor: 'system', message: 'Account created', createdAt: Date.now() }],
     });
     await user.save();
     const safeUser = user.toObject();
@@ -132,6 +134,16 @@ const updateUser = async (req, res, next) => {
     const user = await User.findByIdAndUpdate(id, updatePayload, { new: true });
     if (!user) {
       return res.status(404).json({ message: "Unable to Update User Details" });
+    }
+    try {
+      // record profile update audit
+      user.lastProfileUpdatedAt = Date.now();
+      const actor = (req.auth && req.auth.userId) ? String(req.auth.userId) : String(user._id);
+      user.actions = user.actions || [];
+      user.actions.push({ type: 'profile_update', actor, message: 'Profile updated', createdAt: Date.now() });
+      await user.save();
+    } catch (e) {
+      console.error('Failed to record profile update audit:', e?.message || e);
     }
     return res.status(200).json({ user });
   } catch (err) {
@@ -234,6 +246,16 @@ const loginUser = async (req, res) => {
       if (!verified) {
         return res.status(401).json({ message: 'Invalid MFA code' });
       }
+    }
+
+    // record login audit
+    try {
+      user.lastLoginAt = Date.now();
+      user.actions = user.actions || [];
+      user.actions.push({ type: 'login', actor: String(user._id), message: 'User logged in', createdAt: Date.now() });
+      await user.save();
+    } catch (e) {
+      console.error('Failed to record login audit:', e?.message || e);
     }
 
     const safeUser = user.toObject();

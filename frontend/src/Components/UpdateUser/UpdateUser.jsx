@@ -21,6 +21,7 @@ function UpdateUser() {
   const history = useNavigate();
   const id = useParams().id;
   const { user } = useAuth()
+  const { logout } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -100,6 +101,26 @@ function UpdateUser() {
     }
   }
 
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.')) return;
+    try {
+      setIsSubmitting(true)
+      await api.delete(`/Users/${id}`)
+      // If the current user deleted their own account, log them out and redirect
+      if (user && user._id === id) {
+        try { logout() } catch (e) {}
+        history('/register')
+      } else {
+        history('/users')
+      }
+    } catch (err) {
+      console.error('Failed to delete account', err)
+      setError(err?.response?.data?.message || 'Failed to delete account')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <Nav />
@@ -168,6 +189,11 @@ function UpdateUser() {
             <button className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-70" type='submit' disabled={isSubmitting}>
               {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Updating...</span> : <span className="inline-flex items-center gap-2"><Save size={15} /> Update User</span>}
             </button>
+            {user && user._id === id && (
+              <button type="button" onClick={handleDelete} className="ml-3 btn btn-danger" disabled={isSubmitting}>
+                Delete my account
+              </button>
+            )}
           </div>
         </form>
       </main>

@@ -180,6 +180,31 @@ function AdminDashboard() {
           </div>
         </section>
 
+        {/* Recent audit trail across users */}
+        <section className="surface p-6 animate-fade-up-delay-3">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-slate-900">Recent Audit Trail</h2>
+            <button className="text-sm font-medium text-teal-700 hover:text-teal-800">View all</button>
+          </div>
+          <div className="overflow-x-auto">
+            <ul className="space-y-2">
+              {(() => {
+                const recentActions = (users || []).flatMap((u) => (u.actions || []).map((a) => ({ ...a, userId: u._id, userName: u.name })));
+                recentActions.sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+                return recentActions.slice(0, 8).map((act, idx) => (
+                  <li key={idx} className="rounded-lg border border-slate-100 p-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-slate-700"><strong className="text-slate-900">{act.userName}</strong> — {act.message}</p>
+                      <p className="text-xs text-slate-500">{act.type} • {new Date(act.createdAt).toLocaleString()}</p>
+                    </div>
+                    <div className="text-xs text-slate-400">{act.actor}</div>
+                  </li>
+                ));
+              })()}
+            </ul>
+          </div>
+        </section>
+
         <section className="surface p-6 animate-fade-up-delay-3">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-slate-900">Registered Users</h2>
@@ -204,6 +229,8 @@ function AdminDashboard() {
                       <th className="px-3 py-3 font-medium">Student ID</th>
                       <th className="px-3 py-3 font-medium">Faculty</th>
                       <th className="px-3 py-3 font-medium">Contact</th>
+                      <th className="px-3 py-3 font-medium">Last Login</th>
+                      <th className="px-3 py-3 font-medium">Last Updated</th>
                       <th className="px-3 py-3 font-medium">Role</th>
                       <th className="px-3 py-3 font-medium">Actions</th>
                     </tr>
@@ -216,6 +243,8 @@ function AdminDashboard() {
                         <td className="px-3 py-3 text-slate-700">{u.studentID}</td>
                         <td className="px-3 py-3 text-slate-700">{u.faculty}</td>
                         <td className="px-3 py-3 text-slate-700">{u.contactNumber}</td>
+                        <td className="px-3 py-3 text-slate-700">{u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : '-'}</td>
+                        <td className="px-3 py-3 text-slate-700">{u.lastProfileUpdatedAt ? new Date(u.lastProfileUpdatedAt).toLocaleString() : '-'}</td>
                         <td className="px-3 py-3 text-slate-700">{u.role}</td>
                         <td className="px-3 py-3">
                           <Link to={`/users/${u._id}`} className="text-teal-700 hover:underline">Edit</Link>
