@@ -59,8 +59,7 @@ body {
 	.kicker {
 		@apply text-xs uppercase tracking-[0.22em] text-slate-500;
 	}
-		@apply inline-flex items-center justify-center rounded-2xl px-4 py-2.5 font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60;
-	}
+
 
 	.btn-primary {
 		@apply btn text-white shadow-[0_16px_35px_rgba(79,70,229,0.35)] hover:-translate-y-0.5;
@@ -152,7 +151,9 @@ body {
   .premium-glow {
     box-shadow: 0 24px 60px rgba(79, 70, 229, 0.16);
   }
+
 }
+
 
 @keyframes fadeUp {
 	from {

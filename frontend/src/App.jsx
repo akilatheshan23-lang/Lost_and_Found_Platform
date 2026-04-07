@@ -11,12 +11,7 @@ import ResetPassword from './Components/Login/ResetPassword.jsx'
 import UserDashboard from './Components/Dashboard/UserDashboard.jsx'
 import About from './Components/About/About.jsx'
 import Services from './Components/Services/Services.jsx'
-import { Navigate, Route, Routes } from 'react-router-dom'
-import Register from './Components/Register/Register.jsx'
-import UpdateUser from './Components/UpdateUser/UpdateUser.jsx'
-import Login from './Components/Login/Login.jsx'
-import ForgotPassword from './Components/Login/ForgotPassword.jsx'
-import ResetPassword from './Components/Login/ResetPassword.jsx'
+// react-router imports
 import AdminDashboard from './Components/Dashboard/AdminDashboard.jsx'
 import MfaSettings from './Components/MFA/MfaSettings.jsx'
 import ProtectedRoute from './state/ProtectedRoute.jsx'
@@ -77,6 +72,7 @@ function App() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        </Route>
         
         {/* Unified Premium Features */}
         <Route element={<ProtectedRoute allowedRoles={['student']} />}>
