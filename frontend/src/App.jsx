@@ -76,7 +76,7 @@ function App() {
         
         {/* Unified Premium Features */}
         <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-          <Route path="/user-dashboard" element={<HomeDashboard />} />
+          <Route path="/home-dashboard" element={<HomeDashboard />} />
           
           <Route element={<UnifiedLayout />}>
             <Route path="/lost" element={<LostPage />} />
