@@ -63,6 +63,13 @@ const UserSchema = new Schema({
     resetPasswordExpiry: {
         type: Date,
     },
+    failedLoginAttempts: {
+        type: Number,
+        default: 0
+    },
+    lockoutUntil: {
+        type: Date,
+    },
     // Audit fields
     lastLoginAt: {
         type: Date,

@@ -201,6 +201,13 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // Check account lockout status
+    if (user.lockoutUntil && user.lockoutUntil.getTime && user.lockoutUntil.getTime() > Date.now()) {
+      const msLeft = user.lockoutUntil.getTime() - Date.now();
+      const minutesLeft = Math.ceil(msLeft / (60 * 1000));
+      return res.status(403).json({ message: `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute(s).` });
+    }
+
     // Support legacy users created before role field was enforced.
     if (!user.role) {
       user.role = 'student';
@@ -220,7 +227,22 @@ const loginUser = async (req, res) => {
     console.log('[auth] Password valid:', isPasswordValid, 'passwordHashed:', isPasswordHashed);
 
     if (!isPasswordValid) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      
+      if (user.failedLoginAttempts >= 5) {
+        user.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+        return res.status(403).json({ message: "Account is temporarily locked due to multiple failed login attempts. Please try again in 15 minute(s)." });
+      }
+      
+      await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Reset lock out counters on successful password entry
+    if (user.failedLoginAttempts > 0 || user.lockoutUntil) {
+      user.failedLoginAttempts = 0;
+      user.lockoutUntil = undefined;
     }
 
     if (!isPasswordHashed && role === 'student') {
