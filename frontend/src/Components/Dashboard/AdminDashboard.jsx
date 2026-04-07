@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { AlertTriangle, ClipboardCheck, LoaderCircle, Siren, UserRoundSearch, LogOut } from 'lucide-react'
+import { AlertTriangle, ClipboardCheck, LoaderCircle, Siren, UserRoundSearch, LogOut, Users, PackageSearch, MessageSquareWarning, Store, ChevronRight } from 'lucide-react'
 import api from '../../api'
 import { Link, useNavigate } from 'react-router-dom'
 import Nav from '../Nav/Nav'
@@ -112,6 +113,71 @@ function AdminDashboard() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </section>
+
+        <section className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 animate-fade-up-delay-3 relative overflow-hidden">
+          {/* Decorative background element */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full blur-3xl -mr-20 -mt-20 opacity-50 pointer-events-none"></div>
+
+          <div className="mb-6 relative z-10">
+            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              Platform Settings
+            </h2>
+            <p className="text-slate-500 text-sm mt-1">Manage the connected services through their respective admin panels.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 relative z-10">
+            {/* User Management */}
+            <Link to="/users" className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 block">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 text-white backdrop-blur-sm border border-white/10 group-hover:scale-110 transition-transform">
+                <Users size={24} strokeWidth={2} />
+              </div>
+              <h3 className="font-bold text-lg text-white mb-1">User Management</h3>
+              <p className="text-indigo-100 text-sm mb-4 line-clamp-2">Base authentication and user permissions.</p>
+              <div className="flex items-center text-white/90 text-sm font-medium group-hover:text-white mt-auto">
+                Manage Users <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Lost/Claim Management */}
+            <Link to="/admin/lost-claim" className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 block">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 text-white backdrop-blur-sm border border-white/10 group-hover:scale-110 transition-transform">
+                <PackageSearch size={24} strokeWidth={2} />
+              </div>
+              <h3 className="font-bold text-lg text-white mb-1">Lost & Claim</h3>
+              <p className="text-rose-100 text-sm mb-4 line-clamp-2">View lost items & manage claim queues.</p>
+              <div className="flex items-center text-white/90 text-sm font-medium group-hover:text-white mt-auto">
+                Open Panel <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Found/Social Management */}
+            <Link to="/admin/social-found" className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 block">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 text-white backdrop-blur-sm border border-white/10 group-hover:scale-110 transition-transform">
+                <MessageSquareWarning size={24} strokeWidth={2} />
+              </div>
+              <h3 className="font-bold text-lg text-white mb-1">Found & Social</h3>
+              <p className="text-emerald-100 text-sm mb-4 line-clamp-2">Moderate feedback, alerts & found items.</p>
+              <div className="flex items-center text-white/90 text-sm font-medium group-hover:text-white mt-auto">
+                Moderate Feeds <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
+
+            {/* Marketplace Management */}
+            <Link to="/admin/marketplace" className="group relative overflow-hidden p-6 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 transition-all duration-300 shadow-sm hover:shadow-xl hover:-translate-y-1 block">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl -mr-10 -mt-10 group-hover:opacity-20 transition-opacity"></div>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 text-white backdrop-blur-sm border border-white/10 group-hover:scale-110 transition-transform">
+                <Store size={24} strokeWidth={2} />
+              </div>
+              <h3 className="font-bold text-lg text-white mb-1">Marketplace</h3>
+              <p className="text-amber-100 text-sm mb-4 line-clamp-2">Approve listings and selling transactions.</p>
+              <div className="flex items-center text-white/90 text-sm font-medium group-hover:text-white mt-auto">
+                Manage Shop <ChevronRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
           </div>
         </section>
 

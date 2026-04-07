@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../Nav/Nav'
 import { Loader2, Save, UserCog } from 'lucide-react'
+import { useAuth } from '../../state/AuthContext'
+import { Link } from 'react-router-dom'
 
 function UpdateUser() {
 
@@ -18,8 +20,10 @@ function UpdateUser() {
   });
   const history = useNavigate();
   const id = useParams().id;
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     const fetchHandler = async () => {
@@ -82,7 +86,15 @@ function UpdateUser() {
 
       setError('')
       await sendRequest();
-      history("/users");
+      // If the current user updated their own profile, stay on page and show success message.
+      if (user && user._id === id) {
+        setSuccess('Profile updated successfully!')
+        // clear password fields
+        setInputs((prev) => ({ ...prev, password: '', confirmPassword: '' }))
+      } else {
+        // Admin editing other users: return to users list
+        history("/users");
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -100,6 +112,12 @@ function UpdateUser() {
 
         <form className="surface mt-6 grid gap-4 p-6 animate-fade-up-delay-1" onSubmit={handleSubmit}>
           {error && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {success && <p className="mt-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
+          {success && user && user._id === id && (
+            <div className="mt-2">
+              <Link to={`/users/${user._id}`} className="btn btn-secondary inline-flex items-center gap-2">View Profile</Link>
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-slate-700">Name</label>
@@ -108,7 +126,8 @@ function UpdateUser() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700">Email</label>
-              <input className="field mt-1" type="email" name="email" onChange={handleChange} placeholder='Email' value={inputs.email} required />
+              <input className="field mt-1 bg-slate-50 cursor-not-allowed" type="email" name="email" placeholder='Email' value={inputs.email} disabled aria-readonly="true" />
+              <small className="text-xs text-slate-500">Email cannot be changed from this screen.</small>
             </div>
 
             <div>

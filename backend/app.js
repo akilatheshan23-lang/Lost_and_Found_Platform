@@ -1,80 +1,129 @@
-//password = "rWqjNvO9nMZJTExM";
-
 require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
+const path = require('path');
+
 const routes = require('./Routes/UserRoute');
+const unifiedRoutes = require('./Routes/UnifiedRoutes');
+const User = require('./Model/UserModel');
+const bcrypt = require('bcryptjs');
 
 const app = express();
-const cors = require('cors');
+const PORT = Number(process.env.PORT || 5000);
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || '';
 
-// Middleware to parse JSON bodies
+app.locals.dbReady = false;
+app.locals.dbMessage = 'Database connection has not started yet';
+
 app.use(express.json());
-app.use(cors());
-app.use("/Users", routes);
+app.use(cors({
+  origin: [CLIENT_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+}));
 
-// Simple health check endpoint for diagnostics
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.status(200).json({
+    status: 'ok',
+    server: 'running',
+    dbReady: app.locals.dbReady,
+    dbState: mongoose.connection.readyState,
+    dbMessage: app.locals.dbMessage,
+    timestamp: new Date().toISOString(),
+  });
 });
 
-//add a admin
-const bcrypt = require("bcrypt");
-const User = require("./Model/UserModel");
+const requireDb = (req, res, next) => {
+  if (app.locals.dbReady) return next();
+  return res.status(503).json({
+    message: 'Database is not connected yet. Check backend/.env MONGO_URI and your MongoDB Atlas network access.',
+  });
+};
+
+app.use('/Users', requireDb, routes);
+app.use('/api', requireDb, unifiedRoutes);
 
 const seedAdmin = async () => {
   try {
-    const existingAdmin = await User.findOne({ role: "admin" });
-
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash("Admin123", 10);
-
-      await User.create({
-        name: "System Admin",
-        email: "admin@sliit.lk",
-        studentID: "ADMIN001",
-        faculty: "Management",
-        contactNumber: "0770000000",
-        password: hashedPassword,
-        role: "admin",
-      });
-
-      console.log("✅ Default admin created");
-    } else {
-      console.log("Admin already exists");
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin) {
+      console.log('Admin already exists');
+      return;
     }
+
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin123';
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+    await User.create({
+      name: process.env.ADMIN_NAME || 'System Admin',
+      email: process.env.ADMIN_EMAIL || 'admin@sliit.lk',
+      studentID: 'ADMIN001',
+      faculty: 'Administration',
+      contactNumber: '0770000000',
+      password: hashedPassword,
+      role: 'admin',
+    });
+
+    console.log('Default admin created');
   } catch (error) {
-    console.error("Error seeding admin:", error);
+    console.error('Error seeding admin:', error?.message || error);
   }
 };
 
-// MongoDB connection (use MONGODB_URI from .env when available)
-const MONGO_URI = process.env.MONGODB_URI || "mongodb+srv://LFadmin:rWqjNvO9nMZJTExM@cluster0.gow5pwv.mongodb.net/Lost_And_Found";
+const connectToDatabase = async () => {
+  if (!MONGO_URI) {
+    app.locals.dbReady = false;
+    app.locals.dbMessage = 'Missing MONGO_URI in backend/.env';
+    console.error('Missing MONGO_URI in backend/.env');
+    return;
+  }
 
-mongoose.connect(MONGO_URI)
-.then(async () => {
-  console.log("✅ Connected to MongoDB");
+  try {
+    await mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+    });
+    app.locals.dbReady = true;
+    app.locals.dbMessage = 'Connected to MongoDB';
+    console.log('Connected to MongoDB');
+    await seedAdmin();
+  } catch (err) {
+    app.locals.dbReady = false;
+    app.locals.dbMessage = err?.message || 'MongoDB connection failed';
+    console.error('Failed to connect to MongoDB:', err?.message || err);
+    console.error('The backend server will keep running so you can still open /health.');
+    setTimeout(connectToDatabase, 15000);
+  }
+};
 
-  await seedAdmin();
+mongoose.connection.on('connected', () => {
+  app.locals.dbReady = true;
+  app.locals.dbMessage = 'Connected to MongoDB';
+});
 
-  const PORT = process.env.PORT || 5000;
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
+mongoose.connection.on('disconnected', () => {
+  app.locals.dbReady = false;
+  app.locals.dbMessage = 'MongoDB disconnected';
+});
 
-  server.on('error', (err) => {
-    if (err && err.code === 'EADDRINUSE') {
-      console.error(`Port ${PORT} is already in use. Please stop the process using that port or set PORT to a different value.`);
-      process.exit(1);
-    }
-    console.error('Server error:', err);
+mongoose.connection.on('error', (err) => {
+  app.locals.dbReady = false;
+  app.locals.dbMessage = err?.message || 'MongoDB connection error';
+});
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  connectToDatabase();
+});
+
+server.on('error', (err) => {
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Change PORT in backend/.env or stop the other process.`);
     process.exit(1);
-  });
-})
-.catch((err) => {
-  console.error('❌ Failed to connect to MongoDB.');
-  console.error(err);
-  console.error('Hint: verify MONGODB_URI, network/DNS, and Atlas IP access list.');
+  }
+  console.error('Server error:', err);
   process.exit(1);
 });
+
