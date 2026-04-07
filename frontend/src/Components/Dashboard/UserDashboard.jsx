@@ -63,9 +63,9 @@ function UserDashboard() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button className="btn bg-white text-slate-900 hover:bg-slate-100 inline-flex items-center gap-2"><SearchCheck size={15} />Report Lost</button>
-            <button className="btn bg-teal-100 text-teal-800 hover:bg-teal-200 inline-flex items-center gap-2"><Box size={15} />Report Found</button>
-            <button className="btn border border-white/40 bg-white/10 text-white hover:bg-white/20 inline-flex items-center gap-2"><ShoppingBag size={15} />Marketplace</button>
+            <Link to="/lost" className="btn bg-white text-slate-900 hover:bg-slate-100 inline-flex items-center gap-2"><SearchCheck size={15} />Report Lost</Link>
+            <Link to="/found" className="btn bg-teal-100 text-teal-800 hover:bg-teal-200 inline-flex items-center gap-2"><Box size={15} />Report Found</Link>
+            <Link to="/marketplace" className="btn border border-white/40 bg-white/10 text-white hover:bg-white/20 inline-flex items-center gap-2"><ShoppingBag size={15} />Marketplace</Link>
           </div>
         </header>
 
@@ -104,21 +104,21 @@ function UserDashboard() {
             <h3 className="text-xl font-semibold text-slate-900">Quick Actions</h3>
 
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button className="btn btn-secondary w-full justify-start">
+              <Link to="/lost" className="btn btn-secondary w-full justify-start">
                 Post Lost Item
-              </button>
+              </Link>
 
-              <button className="btn btn-secondary w-full justify-start">
+              <Link to="/found" className="btn btn-secondary w-full justify-start">
                 Post Found Item
-              </button>
+              </Link>
 
-              <button className="btn btn-secondary w-full justify-start">
+              <Link to="/marketplace" className="btn btn-secondary w-full justify-start">
                 Open Marketplace
-              </button>
+              </Link>
 
-              <button className="btn btn-secondary w-full justify-start">
+              <Link to="/claims" className="btn btn-secondary w-full justify-start">
                 My Reports
-              </button>
+              </Link>
             </div>
           </article>
 
