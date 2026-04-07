@@ -1,0 +1,120 @@
+const SocialPost = require("../Model/SocialPostModel");
+const Notification = require("../Model/NotificationModel");
+const { getValidationMessage, socialCreateSchema, socialUpdateSchema } = require("../utils/validators");
+
+const EDIT_LIMIT_MINUTES = 30;
+
+exports.createSocial = async (req, res) => {
+  const parsed = socialCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: getValidationMessage(parsed.error, "Invalid social post data"),
+      issues: parsed.error.issues,
+    });
+  }
+
+  const { postType, title, content, imageUrl, imageData, tags } = parsed.data;
+
+  try {
+    const post = await SocialPost.create({
+      postType,
+      title,
+      content,
+      imageUrl: imageUrl || "",
+      imageData: imageData || "",
+      tags: Array.isArray(tags) ? tags : [],
+      createdBy: req.user.id,
+      createdByName: req.user.name || "User",
+      status: req.user.role === "admin" ? "approved" : "pending",
+    });
+
+    res.status(201).json(post);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.listSocialApproved = async (req, res) => {
+  try {
+    const { cursor, limit = 10, type } = req.query;
+
+    const filter = { status: "approved", hidden: false };
+    if (type) filter.postType = type;
+    if (cursor) filter.createdAt = { $lt: new Date(cursor) };
+
+    const items = await SocialPost.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
+    const nextCursor = items.length ? items[items.length - 1].createdAt.toISOString() : null;
+
+    res.json({ items, nextCursor });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.updateSocial = async (req, res) => {
+  const parsed = socialUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      message: getValidationMessage(parsed.error, "Invalid social post data"),
+      issues: parsed.error.issues,
+    });
+  }
+
+  try {
+    const { id } = req.params;
+    const post = await SocialPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Not found" });
+
+    const isOwner = post.createdBy.toString() === req.user.id;
+    if (!isOwner && req.user.role !== "admin") return res.status(403).json({ message: "Not allowed" });
+
+    if (isOwner && req.user.role !== "admin") {
+      const diffMins = (Date.now() - post.createdAt.getTime()) / 60000;
+      if (diffMins > EDIT_LIMIT_MINUTES) {
+        return res.status(403).json({ message: `Edit limit exceeded (${EDIT_LIMIT_MINUTES} mins)` });
+      }
+    }
+
+    const { title, content, imageUrl, imageData, tags } = parsed.data;
+    if (title !== undefined) post.title = title;
+    if (content !== undefined) post.content = content;
+    if (imageUrl !== undefined) post.imageUrl = imageUrl;
+    if (imageData !== undefined) post.imageData = imageData;
+    if (tags !== undefined) post.tags = Array.isArray(tags) ? tags : post.tags;
+
+    await post.save();
+    res.json(post);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.deleteSocial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await SocialPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Not found" });
+
+    const isOwner = post.createdBy.toString() === req.user.id;
+    if (!isOwner && req.user.role !== "admin") return res.status(403).json({ message: "Not allowed" });
+
+    await post.deleteOne();
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.likeSocial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const post = await SocialPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Not found" });
+
+    post.likes = (post.likes || 0) + 1;
+    await post.save();
+    res.json({ likes: post.likes });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
