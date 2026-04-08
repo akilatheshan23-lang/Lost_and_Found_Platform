@@ -56,7 +56,14 @@ exports.listFoundApproved = async (req, res) => {
     }
     if (cursor) filter.createdAt = { $lt: new Date(cursor) };
 
-    const items = await FoundItem.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
+    let query = FoundItem.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
+    
+    // Explicitly strip massive base64 image strings if requested to guarantee instant network response
+    if (req.query.lean === "true") {
+      query = query.select("-imageData");
+    }
+
+    const items = await query;
     const nextCursor = items.length ? items[items.length - 1].createdAt.toISOString() : null;
 
     res.json({ items, nextCursor });

@@ -30,15 +30,16 @@ function UserDashboard() {
     return 'bg-blue-100 text-blue-800 border bg-blue-50 border-blue-200';
   };
 
+  const [recentActivity, setRecentActivity] = useState([])
+  const [loadingActivity, setLoadingActivity] = useState(true)
+  const [counts, setCounts] = useState({ lost: 0, found: 0 })
+
   const quickStats = [
-    { label: 'Active Reports', value: 5, tone: 'indigo' },
-    { label: 'Matches Found', value: 2, tone: 'teal' },
+    { label: 'Lost Posts', value: counts.lost, tone: 'indigo' },
+    { label: 'Found Posts', value: counts.found, tone: 'teal' },
     { label: 'Items Returned', value: 1, tone: 'mint' },
     { label: 'Marketplace Posts', value: 3, tone: 'amber' },
   ]
-
-  const [recentActivity, setRecentActivity] = useState([])
-  const [loadingActivity, setLoadingActivity] = useState(true)
 
   useEffect(() => {
     let mounted = true;
@@ -47,42 +48,44 @@ function UserDashboard() {
     const fetchMyActivities = async () => {
       try {
         setLoadingActivity(true);
-        // Fetch both lost and found in parallel to populate the dashboard feed
+        // Fetch all items in lightweight mode to properly calculate stat numbers
         const [lostRes, foundRes] = await Promise.all([
-          api.get('/api/lost').catch(() => ({ data: [] })),
-          api.get(`/api/found?byUser=${user._id}`).catch(() => ({ data: { items: [] } }))
+          api.get(`/api/lost?createdBy=${user._id}&limit=1000`).catch(() => ({ data: [] })),
+          api.get(`/api/found?byUser=${user._id}&limit=1000&lean=true`).catch(() => ({ data: { items: [] } }))
         ]);
 
         const lostItems = Array.isArray(lostRes.data) ? lostRes.data : [];
         const foundItems = Array.isArray(foundRes.data?.items) ? foundRes.data.items : [];
 
         // Filter explicitly by logged in user email or User ID fallback
-        const myLost = lostItems.filter(item => 
-             (item.userEmail || '').toLowerCase() === (user.email || '').toLowerCase() || 
-             String(item.createdBy) === String(user._id)
+        const myLost = lostItems.filter(item =>
+          (item.userEmail || '').toLowerCase() === (user.email || '').toLowerCase() ||
+          String(item.createdBy) === String(user._id)
         ).map(item => ({
-             title: item.itemName,
-             status: item.status || 'Pending',
-             time: new Date(item.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-             type: 'Lost Item',
-             original: item
+          title: item.itemName,
+          status: item.status || 'Pending',
+          time: new Date(item.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          type: 'Lost Item',
+          original: item
         }));
 
-        const myFound = foundItems.filter(item => 
-             (item.userEmail || '').toLowerCase() === (user.email || '').toLowerCase() || 
-             String(item.createdBy) === String(user._id)
+        const myFound = foundItems.filter(item =>
+          (item.userEmail || '').toLowerCase() === (user.email || '').toLowerCase() ||
+          String(item.createdBy) === String(user._id)
         ).map(item => ({
-             title: item.title || item.itemName || 'Untitled Found Item',
-             status: item.status || 'Pending Review',
-             time: new Date(item.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-             type: 'Found Item',
-             original: item
+          title: item.title || item.itemName || 'Untitled Found Item',
+          status: item.status || 'Pending Review',
+          time: new Date(item.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          type: 'Found Item',
+          original: item
         }));
 
         if (mounted) {
-             const combined = [...myLost, ...myFound].sort((a,b) => new Date(b.original.createdAt || 0) - new Date(a.original.createdAt || 0));
-             setRecentActivity(combined.slice(0, 5)); // keep it clean with top 5
-             setLoadingActivity(false);
+          setCounts({ lost: myLost.length, found: myFound.length });
+          
+          const combined = [...myLost, ...myFound].sort((a, b) => new Date(b.original.createdAt || 0) - new Date(a.original.createdAt || 0));
+          setRecentActivity(combined.slice(0, 5)); // keep it clean with top 5
+          setLoadingActivity(false);
         }
       } catch (err) {
         console.error('Failed fetching activities', err);
