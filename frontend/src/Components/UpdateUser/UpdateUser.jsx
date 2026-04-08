@@ -3,7 +3,7 @@ import api from '../../api'
 import { useParams } from 'react-router-dom'
 import { useNavigate } from 'react-router-dom'
 import Nav from '../Nav/Nav'
-import { Loader2, Save, UserCog } from 'lucide-react'
+import { Loader2, Save, UserCog, Trash2, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../../state/AuthContext'
 import { Link } from 'react-router-dom'
 
@@ -108,7 +108,7 @@ function UpdateUser() {
       await api.delete(`/Users/${id}`)
       // If the current user deleted their own account, log them out and redirect
       if (user && user._id === id) {
-        try { logout() } catch (e) {}
+        try { logout() } catch (e) { }
         history('/register')
       } else {
         history('/users')
@@ -189,13 +189,21 @@ function UpdateUser() {
             <button className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-70" type='submit' disabled={isSubmitting}>
               {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 size={15} className="animate-spin" /> Updating...</span> : <span className="inline-flex items-center gap-2"><Save size={15} /> Update User</span>}
             </button>
-            {user && user._id === id && (
-              <button type="button" onClick={handleDelete} className="ml-3 btn btn-danger" disabled={isSubmitting}>
-                Delete my account
-              </button>
-            )}
           </div>
         </form>
+
+        {user && user._id === id && (
+          <section className="mt-8 surface border-red-100 bg-red-50/30 p-6 animate-fade-up-delay-2">
+            <p className="mt-2 text-sm text-red-700">
+              Permanently delete your account and all associated data. This action cannot be undone.
+            </p>
+            <div className="mt-4">
+              <button type="button" onClick={handleDelete} className="btn border border-red-200 bg-white text-red-700 hover:bg-red-50 hover:border-red-300 disabled:opacity-50 inline-flex items-center gap-2" disabled={isSubmitting}>
+                <Trash2 size={15} /> Delete My Account
+              </button>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   )

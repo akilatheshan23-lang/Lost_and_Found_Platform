@@ -113,17 +113,31 @@ mongoose.connection.on('error', (err) => {
   app.locals.dbMessage = err?.message || 'MongoDB connection error';
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  connectToDatabase();
-});
+let server;
+const maxRetries = 10;
 
-server.on('error', (err) => {
-  if (err && err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Change PORT in backend/.env or stop the other process.`);
+const startServer = (startPort, attempt = 1) => {
+  server = app.listen(startPort, () => {
+    console.log(`Server running on port ${startPort}`);
+    connectToDatabase();
+  });
+
+  server.on('error', (err) => {
+    if (err && err.code === 'EADDRINUSE') {
+      console.error(`Port ${startPort} is already in use.`);
+      if (attempt >= maxRetries) {
+        console.error(`Exceeded max retries (${maxRetries}). Change PORT in backend/.env or stop the other process.`);
+        process.exit(1);
+      }
+      const nextPort = startPort + 1;
+      console.log(`Attempting to listen on port ${nextPort} (attempt ${attempt + 1}/${maxRetries})`);
+      setTimeout(() => startServer(nextPort, attempt + 1), 500);
+      return;
+    }
+    console.error('Server error:', err);
     process.exit(1);
-  }
-  console.error('Server error:', err);
-  process.exit(1);
-});
+  });
+};
+
+startServer(PORT);
 
