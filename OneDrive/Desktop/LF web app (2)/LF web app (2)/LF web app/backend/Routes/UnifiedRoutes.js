@@ -1,0 +1,82 @@
+const express = require("express");
+const router = express.Router();
+const auth = require("../middleware/auth");
+const { uploadLost, uploadMarketplace } = require("../middleware/upload"); // no need for found/social upload since they are base64 string Zod now!
+
+const lostCtrl = require("../Controllers/LostItemController");
+const foundCtrl = require("../Controllers/FoundItemController");
+const claimCtrl = require("../Controllers/ClaimController");
+const socialCtrl = require("../Controllers/SocialPostController");
+const marketCtrl = require("../Controllers/MarketplaceController");
+const notifCtrl = require("../Controllers/NotificationController");
+const adminCtrl = require("../Controllers/AdminController");
+
+// --- LOST ITEMS ---
+router.get("/lost", lostCtrl.getLostItems);
+router.get("/lost/:id", lostCtrl.getLostItemById);
+router.post("/lost", auth, uploadLost.single("image"), lostCtrl.createLostItem);
+router.patch("/lost/:id/status", auth, lostCtrl.updateLostStatus);
+
+// --- FOUND ITEMS ---
+// Matched exactly to `apiFoundFeed` / `apiCreateFound` frontend behavior
+router.get("/found", foundCtrl.listFoundApproved);
+router.post("/found", auth, foundCtrl.createFound);
+router.get("/found/:id", foundCtrl.getFoundItemById);
+router.patch("/found/:id/approve", auth, foundCtrl.approveFoundItem);
+router.patch("/found/:id/reject", auth, foundCtrl.rejectFoundItem);
+
+// --- CLAIMS (Only for Found Items) ---
+// Matched exactly to `createClaim` frontend behavior (`POST /api/claims`, body: { claimItemId: ...})
+router.post("/claims", auth, claimCtrl.submitClaim);
+router.get("/claims", auth, claimCtrl.getClaims);
+router.get("/claims/:id", auth, claimCtrl.getClaimById);
+router.patch("/claims/:id/status", auth, claimCtrl.updateClaimStatus);
+router.patch("/claims/:id/feedback", auth, claimCtrl.submitFeedback);
+router.get("/claims/:id/document", claimCtrl.downloadApprovalPdf); // Matched to `approvalPdfUrl`
+
+// --- SOCIAL FEED ---
+// Matched exactly to `apiSocialFeed` / `apiCreateSocial` etc.
+router.get("/social", socialCtrl.listSocialApproved);
+router.post("/social", auth, socialCtrl.createSocial);
+router.put("/social/:id", auth, socialCtrl.updateSocial);
+router.delete("/social/:id", auth, socialCtrl.deleteSocial);
+router.post("/social/:id/like", auth, socialCtrl.likeSocial);
+
+// --- MARKETPLACE ---
+router.get("/marketplace", marketCtrl.getAllMarketplaceItems);
+router.post("/marketplace", auth, uploadMarketplace.single("image"), marketCtrl.createMarketplaceItem);
+router.patch("/marketplace/:id/status", auth, marketCtrl.updateMarketplaceItemStatus);
+router.post("/marketplace/:id/borrow", auth, marketCtrl.borrowMarketplaceItem);
+router.post("/marketplace/requests", auth, marketCtrl.createMarketplaceItemRequest);
+
+// --- NOTIFICATIONS ---
+router.get("/notifications", auth, notifCtrl.getNotifications);
+router.patch("/notifications/:id/read", auth, notifCtrl.markAsRead);
+router.patch("/notifications/read-all", auth, notifCtrl.markAllAsRead);
+
+// --- ADMIN CONTROLS ---
+router.get("/admin/pending", auth, adminCtrl.getPending);
+router.get("/admin/stats", auth, adminCtrl.getStats);
+
+router.post("/admin/found/:id/approve", auth, adminCtrl.approveFound);
+router.post("/admin/found/:id/reject", auth, adminCtrl.rejectFound);
+router.post("/admin/found/:id/toggle-hide", auth, adminCtrl.toggleHideFound);
+router.put("/admin/found/:id/image", auth, adminCtrl.updateFoundImage);
+router.delete("/admin/found/:id", auth, adminCtrl.deleteFound);
+
+router.post("/admin/social/:id/approve", auth, adminCtrl.approveSocial);
+router.post("/admin/social/:id/reject", auth, adminCtrl.rejectSocial);
+router.post("/admin/social/:id/toggle-hide", auth, adminCtrl.toggleHideSocial);
+
+router.post("/admin/marketplace/:id/approve", auth, adminCtrl.approveMarketplace);
+router.post("/admin/marketplace/:id/reject", auth, adminCtrl.rejectMarketplace);
+router.get("/admin/marketplace/items", auth, marketCtrl.getAdminMarketplaceItems);
+router.put("/admin/marketplace/:id", auth, uploadMarketplace.single("image"), marketCtrl.updateMarketplaceItem);
+router.delete("/admin/marketplace/:id", auth, marketCtrl.deleteMarketplaceItem);
+router.get("/admin/marketplace/borrows", auth, marketCtrl.getBorrowRequests);
+router.patch("/admin/marketplace/borrows/:id/approve", auth, marketCtrl.approveBorrowRequest);
+router.patch("/admin/marketplace/borrows/:id/reject", auth, marketCtrl.rejectBorrowRequest);
+router.get("/admin/marketplace/requests", auth, marketCtrl.getMarketplaceItemRequests);
+router.patch("/admin/marketplace/requests/:id/status", auth, marketCtrl.updateMarketplaceItemRequestStatus);
+
+module.exports = router;
