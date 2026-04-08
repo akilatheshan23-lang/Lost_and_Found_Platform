@@ -26,6 +26,16 @@ function UpdateUser() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
+  // Real-time Profile Maturity Calculation
+  let maturityScore = 0;
+  if (inputs.name || user?.name) maturityScore += 20;
+  if (inputs.email || user?.email) maturityScore += 20;
+  if (inputs.studentID || user?.studentID) maturityScore += 20;
+  if (inputs.contactNumber || user?.contactNumber) maturityScore += 20;
+  if (user?.mfaEnabled) maturityScore += 20;
+  
+  const displayUserName = inputs.name || user?.name || 'Student';
+
   useEffect(() => {
     const fetchHandler = async () => {
       await api
@@ -130,6 +140,31 @@ function UpdateUser() {
           <h1 className="mt-2 text-3xl font-bold inline-flex items-center gap-2"><UserCog size={24} /> Update User</h1>
           <p className="mt-2 text-sm text-slate-200">Edit profile details and optional credentials securely.</p>
         </div>
+
+        {user && user._id === id && (
+          <div className="surface mt-6 flex flex-col sm:flex-row sm:items-center gap-5 p-6 animate-fade-up border-t-4 border-t-teal-600">
+            <img 
+              src={`https://ui-avatars.com/api/?name=${displayUserName.replace(' ', '+')}&background=0f766e&color=fff&size=128&bold=true`} 
+              alt={displayUserName} 
+              className="h-16 w-16 rounded-full border-2 border-slate-100 shadow-sm object-cover"
+            />
+            <div className="flex-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Profile Strength</p>
+              <h2 className="text-xl font-bold text-slate-900">{maturityScore}% Complete</h2>
+              <div className="mt-2 h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full transition-all duration-500 rounded-full ${maturityScore === 100 ? 'bg-emerald-500' : 'bg-teal-500'}`} style={{ width: `${maturityScore}%` }}></div>
+              </div>
+              {maturityScore < 100 && (
+                <p className="mt-2 text-xs font-medium text-slate-500">Enable Two-Factor Authentication (MFA) to reach 100%.</p>
+              )}
+            </div>
+            {maturityScore === 100 && (
+              <div className="hidden sm:flex self-start px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold uppercase rounded-full tracking-wide">
+                Verified
+              </div>
+            )}
+          </div>
+        )}
 
         <form className="surface mt-6 grid gap-4 p-6 animate-fade-up-delay-1" onSubmit={handleSubmit}>
           {error && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

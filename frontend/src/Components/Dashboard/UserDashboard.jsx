@@ -15,6 +15,20 @@ function UserDashboard() {
     navigate('/login', { replace: true })
   }
 
+  // Profile Maturity Calculation
+  let maturityScore = 0;
+  if (user?.name) maturityScore += 20;
+  if (user?.email) maturityScore += 20;
+  if (user?.studentID) maturityScore += 20;
+  if (user?.contactNumber) maturityScore += 20;
+  if (user?.mfaEnabled) maturityScore += 20;
+  
+  const getStatusStyle = (status) => {
+    if (status.includes('Search') || status.includes('Pending')) return 'bg-amber-100 text-amber-800 border bg-amber-50 border-amber-200';
+    if (status.includes('Match') || status.includes('Approved')) return 'bg-emerald-100 text-emerald-800 border bg-emerald-50 border-emerald-200';
+    return 'bg-blue-100 text-blue-800 border bg-blue-50 border-blue-200';
+  };
+
   const quickStats = [
     { label: 'Active Reports', value: 5, tone: 'indigo' },
     { label: 'Matches Found', value: 2, tone: 'teal' },
@@ -34,12 +48,22 @@ function UserDashboard() {
 
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
 
-        <section className="surface p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-up">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-teal-100 text-teal-700 font-semibold">{userName.charAt(0).toUpperCase()}</span>
+        <section className="surface p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-up border-t-4 border-t-teal-600">
+          <div className="flex items-center gap-4">
+            <img 
+              src={`https://ui-avatars.com/api/?name=${userName.replace(' ', '+')}&background=0f766e&color=fff&size=128&bold=true`} 
+              alt={userName} 
+              className="h-14 w-14 rounded-full border-2 border-white shadow-md"
+            />
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-500">Signed in as</p>
-              <strong className="text-slate-900">{userName}</strong>
+              <strong className="text-lg text-slate-900">{userName}</strong>
+              <div className="mt-1 flex items-center gap-2">
+                <div className="h-1.5 w-24 bg-slate-200 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full ${maturityScore === 100 ? 'bg-emerald-500' : 'bg-teal-500'}`} style={{ width: `${maturityScore}%` }}></div>
+                </div>
+                <span className="text-[10px] font-bold text-slate-500">{maturityScore}% Profile</span>
+              </div>
             </div>
           </div>
 
@@ -71,9 +95,12 @@ function UserDashboard() {
 
         <section className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-fade-up-delay-2">
           {quickStats.map((stat) => (
-            <article className="surface p-5" key={stat.label}>
-              <p className="text-sm text-slate-500">{stat.label}</p>
-              <h2 className="mt-2 text-3xl font-semibold text-slate-900">{stat.value}</h2>
+            <article className="surface p-6 group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 relative overflow-hidden" key={stat.label}>
+              <div className={`absolute -right-6 -top-6 h-24 w-24 rounded-full opacity-10 bg-${stat.tone}-500 group-hover:scale-150 transition-transform duration-500`}></div>
+              <p className="text-sm font-medium text-slate-500 relative z-10">{stat.label}</p>
+              <div className="mt-2 flex items-baseline gap-2 relative z-10">
+                <h2 className="text-4xl font-bold text-slate-900">{stat.value}</h2>
+              </div>
             </article>
           ))}
         </section>
@@ -91,7 +118,10 @@ function UserDashboard() {
                 <li key={item.title} className="rounded-lg border border-slate-100 p-3 flex items-center justify-between">
                   <div>
                     <h4 className="font-medium text-slate-900">{item.title}</h4>
-                    <span className="inline-flex mt-1 rounded-full bg-teal-50 px-2.5 py-1 text-xs font-medium text-teal-700 items-center gap-1"><Loader2 size={11} />{item.status}</span>
+                    <span className={`inline-flex mt-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider items-center gap-1 shadow-sm ${getStatusStyle(item.status)}`}>
+                      <Loader2 size={10} className={item.status.includes('Search') ? 'animate-spin' : ''} />
+                      {item.status}
+                    </span>
                   </div>
 
                   <time className="text-sm text-slate-500">{item.time}</time>
