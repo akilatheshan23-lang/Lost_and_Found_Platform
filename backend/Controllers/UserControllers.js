@@ -10,7 +10,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-env';
 //Data Display
 const getAllUsers = async (req, res, next) => {
   try {
-    const Users = await User.find().select('-password');
+    // Only fetch users that are NOT softly deleted
+    const Users = await User.find({ isActive: { $ne: false } }).select('-password');
     if (!Users || Users.length === 0) {
       return res.status(404).json({ message: "No Users found" });
     }
@@ -152,14 +153,22 @@ const updateUser = async (req, res, next) => {
   }
 }
 
-//Delete User Details
+//Delete User Details (Soft Delete)
 const deleteUser = async (req, res, next) => {
   const id = req.params.id;
 
   let user;
 
   try {
-    user = await User.findByIdAndDelete(id);
+    user = await User.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    
+    // Log the deletion action in audit
+    if (user) {
+      const actor = (req.auth && req.auth.userId) ? String(req.auth.userId) : id;
+      user.actions = user.actions || [];
+      user.actions.push({ type: 'account_deleted', actor, message: 'Account deactivated (soft delete)', createdAt: Date.now() });
+      await user.save();
+    }
   } catch (err) {
     console.log(err);
   }
@@ -199,6 +208,11 @@ const loginUser = async (req, res) => {
     console.log('[auth] User lookup result:', !!user);
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    // Block deactivated (soft deleted) accounts
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Account has been deleted or deactivated." });
     }
 
     // Check account lockout status

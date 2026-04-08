@@ -260,6 +260,7 @@ function AdminDashboard() {
                       <th className="px-4 py-2">Student ID</th>
                       <th className="px-4 py-2">Faculty</th>
                       <th className="px-4 py-2">Contact</th>
+                      <th className="px-4 py-2">Last Login</th>
                       <th className="px-4 py-2">Security/Access</th>
                       <th className="px-4 py-2 text-right">Actions</th>
                     </tr>
@@ -279,6 +280,9 @@ function AdminDashboard() {
                         <td className="px-4 py-3 text-slate-700 font-medium text-sm">{u.studentID}</td>
                         <td className="px-4 py-3 text-slate-600 text-sm">{u.faculty}</td>
                         <td className="px-4 py-3 text-slate-600 text-sm">{u.contactNumber}</td>
+                        <td className="px-4 py-3 text-slate-500 text-[11px] font-medium uppercase tracking-wider">
+                          {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never'}
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-col gap-1 items-start">
                              <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${u.role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>

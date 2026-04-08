@@ -70,6 +70,10 @@ const UserSchema = new Schema({
     lockoutUntil: {
         type: Date,
     },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
     // Audit fields
     lastLoginAt: {
         type: Date,
