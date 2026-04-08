@@ -37,9 +37,17 @@ exports.createFound = async (req, res) => {
 
 exports.listFoundApproved = async (req, res) => {
   try {
-    const { cursor, limit = 10, category, userType, q } = req.query;
+    const { cursor, limit = 10, category, userType, q, byUser } = req.query;
 
-    const filter = { status: "approved", hidden: { $ne: true } };
+    const filter = { hidden: { $ne: true } };
+    
+    // Bypass 'approved' lock if the user is explicitly requesting their own personal dashboard feed
+    if (byUser) {
+      filter.createdBy = byUser;
+    } else {
+      filter.status = "approved";
+    }
+
     if (category) filter.category = category;
     if (userType) filter.userType = userType;
     if (q) {

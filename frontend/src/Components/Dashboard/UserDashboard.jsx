@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../state/AuthContext'
+import api from '../../api'
 import Nav from '../Nav/Nav'
 import Footer from '../Footer/Footer'
 import { Box, ClipboardList, Loader2, LogOut, SearchCheck, ShoppingBag, UserCircle2 } from 'lucide-react'
@@ -22,7 +23,7 @@ function UserDashboard() {
   if (user?.studentID) maturityScore += 20;
   if (user?.contactNumber) maturityScore += 20;
   if (user?.mfaEnabled) maturityScore += 20;
-  
+
   const getStatusStyle = (status) => {
     if (status.includes('Search') || status.includes('Pending')) return 'bg-amber-100 text-amber-800 border bg-amber-50 border-amber-200';
     if (status.includes('Match') || status.includes('Approved')) return 'bg-emerald-100 text-emerald-800 border bg-emerald-50 border-emerald-200';
@@ -36,11 +37,63 @@ function UserDashboard() {
     { label: 'Marketplace Posts', value: 3, tone: 'amber' },
   ]
 
-  const recentActivity = [
-    { title: 'Lost Wallet', status: 'Searching', time: '18 mins ago' },
-    { title: 'Found Calculator', status: 'Matched', time: '1 hr ago' },
-    { title: 'Keys', status: 'Pending Pickup', time: '3 hrs ago' },
-  ]
+  const [recentActivity, setRecentActivity] = useState([])
+  const [loadingActivity, setLoadingActivity] = useState(true)
+
+  useEffect(() => {
+    let mounted = true;
+    if (!user?.email) return;
+
+    const fetchMyActivities = async () => {
+      try {
+        setLoadingActivity(true);
+        // Fetch both lost and found in parallel to populate the dashboard feed
+        const [lostRes, foundRes] = await Promise.all([
+          api.get('/api/lost').catch(() => ({ data: [] })),
+          api.get(`/api/found?byUser=${user._id}`).catch(() => ({ data: { items: [] } }))
+        ]);
+
+        const lostItems = Array.isArray(lostRes.data) ? lostRes.data : [];
+        const foundItems = Array.isArray(foundRes.data?.items) ? foundRes.data.items : [];
+
+        // Filter explicitly by logged in user email or User ID fallback
+        const myLost = lostItems.filter(item => 
+             (item.userEmail || '').toLowerCase() === (user.email || '').toLowerCase() || 
+             String(item.createdBy) === String(user._id)
+        ).map(item => ({
+             title: item.itemName,
+             status: item.status || 'Pending',
+             time: new Date(item.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+             type: 'Lost Item',
+             original: item
+        }));
+
+        const myFound = foundItems.filter(item => 
+             (item.userEmail || '').toLowerCase() === (user.email || '').toLowerCase() || 
+             String(item.createdBy) === String(user._id)
+        ).map(item => ({
+             title: item.title || item.itemName || 'Untitled Found Item',
+             status: item.status || 'Pending Review',
+             time: new Date(item.createdAt || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+             type: 'Found Item',
+             original: item
+        }));
+
+        if (mounted) {
+             const combined = [...myLost, ...myFound].sort((a,b) => new Date(b.original.createdAt || 0) - new Date(a.original.createdAt || 0));
+             setRecentActivity(combined.slice(0, 5)); // keep it clean with top 5
+             setLoadingActivity(false);
+        }
+      } catch (err) {
+        console.error('Failed fetching activities', err);
+        if (mounted) setLoadingActivity(false);
+      }
+    };
+
+    fetchMyActivities();
+
+    return () => { mounted = false; };
+  }, [user]);
 
   return (
     <div className="min-h-screen">
@@ -50,9 +103,9 @@ function UserDashboard() {
 
         <section className="surface p-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-up border-t-4 border-t-teal-600">
           <div className="flex items-center gap-4">
-            <img 
-              src={`https://ui-avatars.com/api/?name=${userName.replace(' ', '+')}&background=0f766e&color=fff&size=128&bold=true`} 
-              alt={userName} 
+            <img
+              src={`https://ui-avatars.com/api/?name=${userName.replace(' ', '+')}&background=0f766e&color=fff&size=128&bold=true`}
+              alt={userName}
               className="h-14 w-14 rounded-full border-2 border-white shadow-md"
             />
             <div>
@@ -114,19 +167,31 @@ function UserDashboard() {
             </div>
 
             <ul className="space-y-3">
-              {recentActivity.map((item) => (
-                <li key={item.title} className="rounded-lg border border-slate-100 p-3 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-slate-900">{item.title}</h4>
-                    <span className={`inline-flex mt-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider items-center gap-1 shadow-sm ${getStatusStyle(item.status)}`}>
-                      <Loader2 size={10} className={item.status.includes('Search') ? 'animate-spin' : ''} />
-                      {item.status}
-                    </span>
-                  </div>
+              {loadingActivity ? (
+                <div className="flex justify-center py-6"><Loader2 className="animate-spin text-slate-400" /></div>
+              ) : recentActivity.length === 0 ? (
+                <div className="py-8 text-center bg-slate-50/50 rounded-xl border border-slate-100">
+                  <p className="text-slate-500 font-medium text-sm mb-1">No active reports found.</p>
+                  <Link to="/lost" className="text-xs text-indigo-600 font-bold hover:underline">Report your first item →</Link>
+                </div>
+              ) : (
+                recentActivity.map((item, idx) => (
+                  <li key={idx} className="rounded-xl border border-slate-100 p-3 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer">
+                    <div>
+                      <h4 className="font-bold text-slate-800">{item.title}</h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[9px] font-black uppercase tracking-wider items-center gap-1 shadow-sm ${getStatusStyle(item.status)}`}>
+                          <Loader2 size={10} className={item.status.includes('Search') || item.status.includes('Pending') ? 'animate-spin' : ''} />
+                          {item.status}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${item.type === 'Lost Item' ? 'text-amber-500' : 'text-emerald-500'}`}>• {item.type}</span>
+                      </div>
+                    </div>
 
-                  <time className="text-sm text-slate-500">{item.time}</time>
-                </li>
-              ))}
+                    <time className="text-xs font-medium text-slate-500 text-right max-w-[80px]">{item.time}</time>
+                  </li>
+                ))
+              )}
             </ul>
           </article>
 
