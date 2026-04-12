@@ -170,7 +170,8 @@ exports.commentSocial = async (req, res) => {
     post.comments.push(newComment);
     await post.save();
 
-    res.status(201).json(newComment);
+    const addedComment = post.comments[post.comments.length - 1];
+    res.status(201).json(addedComment);
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
@@ -209,6 +210,32 @@ exports.editCommentSocial = async (req, res) => {
     await post.save();
 
     res.json(comment);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.deleteCommentSocial = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const post = await SocialPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const comment = post.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    const isOwner = String(comment.user) === String(req.user.id);
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not allowed to delete this comment" });
+    }
+
+    comment.deleteOne();
+    await post.save();
+
+    res.json({ message: "Comment deleted successfully", commentId });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }

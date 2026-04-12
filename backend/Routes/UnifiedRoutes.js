@@ -43,6 +43,7 @@ router.delete("/social/:id", auth, socialCtrl.deleteSocial);
 router.post("/social/:id/like", auth, socialCtrl.likeSocial);
 router.post("/social/:id/comment", auth, socialCtrl.commentSocial);
 router.put("/social/:id/comment/:commentId", auth, socialCtrl.editCommentSocial);
+router.delete("/social/:id/comment/:commentId", auth, socialCtrl.deleteCommentSocial);
 
 // --- MARKETPLACE ---
 router.get("/marketplace", marketCtrl.getAllMarketplaceItems);

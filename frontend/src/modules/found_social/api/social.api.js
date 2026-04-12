@@ -34,3 +34,8 @@ export async function apiEditCommentSocial(id, commentId, text) {
   const { data } = await http.put(`/api/social/${id}/comment/${commentId}`, { text });
   return data;
 }
+
+export async function apiDeleteCommentSocial(id, commentId) {
+  const { data } = await http.delete(`/api/social/${id}/comment/${commentId}`);
+  return data;
+}
