@@ -145,7 +145,7 @@ export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, o
             onClick={() => onOpenDetail?.(post)}
             className="flex items-center gap-2 text-slate-600 hover:text-slate-900"
           >
-            💬 <span>Details</span>
+            💬 <span>{post.comments?.length || 0} Comments</span>
           </button>
 
           <button

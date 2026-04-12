@@ -1,0 +1,10 @@
+TO: it23379442@my.sliit.lk
+SUBJECT: Found Item Approved - Download Your QR Code
+
+Hello Akila theshan weerashingha,
+
+Your found item post for "kkkkkkkkkk" has been approved.
+The QR code is attached to this email.
+
+Scan page: http://localhost:5173/found/scan/3e4e9a77861e4284b9fe43190298880271a9
+Only limited item details are shown when the code is scanned.
