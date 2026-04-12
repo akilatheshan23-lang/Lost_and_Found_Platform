@@ -54,6 +54,22 @@ export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, o
 
   const imgSrc = post.imageData || post.imageUrl || "";
 
+  const handleShare = () => {
+    const text = `Check out this post on Smart Campus: ${post.title}\n\n`;
+    const shareUrl = window.location.href; 
+
+    if (navigator.share) {
+      navigator.share({
+        title: post.title,
+        text: text,
+        url: shareUrl
+      }).catch(err => console.error("Error sharing:", err));
+    } else {
+      const waLink = `https://wa.me/?text=${encodeURIComponent(text + shareUrl)}`;
+      window.open(waLink, "_blank");
+    }
+  };
+
   return (
     <div className="card-solid card-hover overflow-hidden border-white/90 bg-white/92">
       <div className="p-5 space-y-4">
@@ -150,6 +166,7 @@ export default function PostCardSocial({ post, onEdit, onDelete, onOpenDetail, o
 
           <button
             type="button"
+            onClick={handleShare}
             className="flex items-center gap-2 text-slate-600 hover:text-emerald-700"
           >
             🔗 <span>Share</span>
