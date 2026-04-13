@@ -1,8 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { apiGetFoundQr } from "../api/found.api";
-import { useAuth } from "../auth/AuthContext";
-import { useToast } from "./Toast";
 
 function categoryBadge(category) {
   const styles = {
@@ -16,49 +13,9 @@ function categoryBadge(category) {
   return styles[category] || "bg-slate-50 text-slate-700 border-slate-200";
 }
 
-function triggerDownload(dataUrl, filename) {
-  const link = document.createElement("a");
-  link.href = dataUrl;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 export default function PostCardFound({ item }) {
-  const { user } = useAuth();
-  const toast = useToast();
-  const [downloadingQr, setDownloadingQr] = useState(false);
-
   const dt = useMemo(() => new Date(item.foundDate), [item.foundDate]);
   const imgSrc = item.imageData || item.imageUrl || "";
-  const currentUserId = user?._id || user?.id || "";
-  const itemCreatorId = typeof item.createdBy === "object" ? item.createdBy?._id : item.createdBy;
-  const isCreator = Boolean(currentUserId) && String(itemCreatorId || "") === String(currentUserId);
-  const canDownloadQr = isCreator && item.status === "approved";
-
-  async function downloadQr() {
-    if (!isCreator) {
-      toast.push("Only the owner of this found post can download the QR code.", "warning");
-      return;
-    }
-
-    if (item.status !== "approved") {
-      toast.push("QR code is available only after admin approval.", "warning");
-      return;
-    }
-
-    try {
-      setDownloadingQr(true);
-      const data = await apiGetFoundQr(item._id);
-      triggerDownload(data.qrCodeData, data.filename || `found-item-qr-${item._id}.png`);
-      toast.push("QR downloaded successfully", "success");
-    } catch (error) {
-      toast.push(error?.response?.data?.message || "Unable to download QR code", "error");
-    } finally {
-      setDownloadingQr(false);
-    }
-  }
 
   return (
     <div className="card-solid card-hover overflow-hidden border-white/90 bg-white/92">
@@ -111,12 +68,6 @@ export default function PostCardFound({ item }) {
         ) : null}
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
-          {canDownloadQr ? (
-            <button onClick={downloadQr} disabled={downloadingQr} className="btn-secondary">
-              {downloadingQr ? "Preparing QR..." : "⬇️ Download QR"}
-            </button>
-          ) : null}
-
           <Link to={`/claims/${item._id}`} className="btn-warning">
             🙋 Claim
           </Link>
