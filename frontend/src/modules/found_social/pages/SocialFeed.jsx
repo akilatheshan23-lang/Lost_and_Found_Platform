@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { apiDeleteSocial, apiLikeSocial, apiSocialFeed } from "../api/social.api";
+import { apiDeleteSocial, apiLikeSocial, apiSocialFeed, apiCommentSocial, apiEditCommentSocial, apiDeleteCommentSocial } from "../api/social.api";
+import EmojiPicker from "emoji-picker-react";
 import CreateSocialModal from "../components/CreateSocialModal";
 import EditSocialModal from "../components/EditSocialModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
@@ -23,6 +24,11 @@ export default function SocialFeed() {
   const [deleteBusy, setDeleteBusy] = useState(false);
 
   const [detailPost, setDetailPost] = useState(null);
+  const [commentText, setCommentText] = useState("");
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState("");
+  const [showMainEmojiPicker, setShowMainEmojiPicker] = useState(false);
+  const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
 
   const sentinelRef = useRef(null);
 
@@ -55,6 +61,58 @@ export default function SocialFeed() {
     return () => obs.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cursor, loading]);
+
+  async function submitComment() {
+    if (!user) return toast.push("Login required", "warning");
+    if (!commentText.trim()) return;
+    try {
+      const newComment = await apiCommentSocial(detailPost._id, commentText);
+      setDetailPost(prev => ({
+        ...prev,
+        comments: [...(prev.comments || []), newComment]
+      }));
+      setItems(prev => prev.map(p => p._id === detailPost._id ? {
+        ...p,
+        comments: [...(p.comments || []), newComment]
+      } : p));
+      setCommentText("");
+      toast.push("Comment added", "success");
+    } catch {
+      toast.push("Failed to add comment", "error");
+    }
+  }
+
+  async function submitEditComment(commentId) {
+    if (!user) return toast.push("Login required", "warning");
+    if (!editingCommentText.trim()) return;
+    try {
+      const updatedComment = await apiEditCommentSocial(detailPost._id, commentId, editingCommentText);
+      const updateCommentsList = (list) => list.map(c => c._id === commentId ? updatedComment : c);
+
+      setDetailPost(prev => ({ ...prev, comments: updateCommentsList(prev.comments || []) }));
+      setItems(prev => prev.map(p => p._id === detailPost._id ? { ...p, comments: updateCommentsList(p.comments || []) } : p));
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      toast.push("Comment updated", "success");
+    } catch (error) {
+      toast.push(error?.response?.data?.message || "Failed to update comment", "error");
+    }
+  }
+
+  async function handleDeleteComment(commentId) {
+    if (!user) return toast.push("Login required", "warning");
+    if (!window.confirm("Are you sure you want to delete this comment?")) return;
+    try {
+      await apiDeleteCommentSocial(detailPost._id, commentId);
+      const updateCommentsList = (list) => list.filter(c => c._id !== commentId);
+
+      setDetailPost(prev => ({ ...prev, comments: updateCommentsList(prev.comments || []) }));
+      setItems(prev => prev.map(p => p._id === detailPost._id ? { ...p, comments: updateCommentsList(p.comments || []) } : p));
+      toast.push("Comment deleted", "success");
+    } catch (error) {
+      toast.push(error?.response?.data?.message || "Failed to delete comment", "error");
+    }
+  }
 
   async function onLike(post) {
     if (!user) return toast.push("Login required", "warning");
@@ -162,8 +220,98 @@ export default function SocialFeed() {
             {(detailPost.imageData || detailPost.imageUrl) ? (
               <img src={detailPost.imageData || detailPost.imageUrl} className="w-full rounded-2xl" />
             ) : null}
-            <div className="pt-3 border-t text-slate-500 text-sm">
-              Comments feature coming soon.
+            <div className="pt-3 border-t text-sm">
+              <div className="font-bold text-slate-700 mb-2">Comments ({detailPost.comments?.length || 0})</div>
+              <div className="space-y-2 max-h-80 overflow-y-auto mb-3 pr-2">
+                {detailPost.comments && detailPost.comments.length > 0 ? (
+                  detailPost.comments.map((c) => {
+                    const isMyComment = String(c.user) === String(user?._id || user?.id);
+                    const isAdmin = user?.role === "admin" || user?.isAdmin === true;
+                    const isUnder30Mins = (Date.now() - new Date(c.createdAt).getTime()) / 60000 <= 30;
+                    const canEdit = isMyComment && isUnder30Mins;
+                    const canDelete = isMyComment || isAdmin;
+                    const isEditing = editingCommentId === c._id;
+
+                    return (
+                      <div key={c._id} className="bg-slate-50 p-2 rounded-lg border border-slate-100 flex flex-col">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-slate-800 text-xs">{c.userName}</span>
+                          <div className="flex items-center gap-2">
+                            {canEdit && !isEditing && (
+                              <button
+                                onClick={() => { setEditingCommentId(c._id); setEditingCommentText(c.text); }}
+                                className="text-[10px] text-blue-600 hover:underline"
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canDelete && !isEditing && (
+                              <button
+                                onClick={() => handleDeleteComment(c._id)}
+                                className="text-[10px] text-red-600 hover:underline"
+                              >
+                                Delete
+                              </button>
+                            )}
+                            <span className="text-[10px] text-slate-400">{new Date(c.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        {isEditing ? (
+                          <div className="mt-1 flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={editingCommentText}
+                                onChange={(e) => setEditingCommentText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === "Enter") submitEditComment(c._id); }}
+                                className="input-field flex-1 text-sm bg-white p-1"
+                                autoFocus
+                              />
+                              <div className="flex gap-1 items-center">
+                                <button onClick={() => setShowEditEmojiPicker(!showEditEmojiPicker)} className="text-xl grayscale hover:grayscale-0" title="Emoji">😀</button>
+                                <button onClick={() => { submitEditComment(c._id); setShowEditEmojiPicker(false); }} className="text-xs text-green-600 font-semibold px-2 py-1 rounded bg-green-50 hover:bg-green-100">Save</button>
+                                <button onClick={() => { setEditingCommentId(null); setShowEditEmojiPicker(false); }} className="text-xs text-red-600 font-semibold px-2 py-1 rounded bg-red-50 hover:bg-red-100">Cancel</button>
+                              </div>
+                            </div>
+                            {showEditEmojiPicker && (
+                              <div className="mt-1 self-end z-50 shadow-xl rounded-lg">
+                                <EmojiPicker onEmojiClick={(e) => { setEditingCommentText(prev => prev + e.emoji); setShowEditEmojiPicker(false); }} />
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-600 text-sm mt-1">{c.text}</span>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-slate-500 text-xs italic">No comments yet.</div>
+                )}
+              </div>
+              {showMainEmojiPicker && (
+                <div className="mb-2 shadow-xl rounded-lg">
+                  <EmojiPicker onEmojiClick={(e) => { setCommentText(prev => prev + e.emoji); setShowMainEmojiPicker(false); }} width="100%" />
+                </div>
+              )}
+              <div className="flex gap-2 items-center">
+                <button 
+                  onClick={() => setShowMainEmojiPicker(!showMainEmojiPicker)} 
+                  className="text-2xl grayscale hover:grayscale-0 transition"
+                  title="Add Emoji"
+                >
+                  😀
+                </button>
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { submitComment(); setShowMainEmojiPicker(false); } }}
+                  placeholder="Write a comment..."
+                  className="input-field flex-1 text-sm bg-slate-50"
+                />
+                <button onClick={() => { submitComment(); setShowMainEmojiPicker(false); }} className="btn-primary whitespace-nowrap text-sm px-4">Post</button>
+              </div>
             </div>
           </div>
         ) : null}

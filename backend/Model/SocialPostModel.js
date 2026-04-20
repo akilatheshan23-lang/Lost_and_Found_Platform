@@ -16,6 +16,14 @@ const socialPostSchema = new mongoose.Schema(
     createdByName: { type: String, required: true },
 
     likes: { type: Number, default: 0 },
+    comments: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "UserModel", required: true },
+        userName: { type: String, required: true },
+        text: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

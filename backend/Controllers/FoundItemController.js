@@ -3,6 +3,8 @@ const Notification = require("../Model/NotificationModel");
 const User = require("../Model/UserModel");
 const { foundCreateSchema, getValidationMessage } = require("../utils/validators");
 const { buildFoundScanPdf } = require("../utils/pdfUtils");
+const { sendFoundQrEmail } = require("../utils/emailUtils");
+const { generateFoundQrToken, buildFoundQrCodeData, dataUrlToBuffer } = require("../utils/foundQrUtils");
 
 function formatPublicItem(item) {
   return {
@@ -152,8 +154,20 @@ exports.downloadFoundScanPdf = async (req, res) => {
 
 exports.approveFoundItem = async (req, res) => {
   try {
-    const item = await FoundItem.findByIdAndUpdate(req.params.id, { status: "approved" }, { new: true });
+    const item = await FoundItem.findById(req.params.id);
     if (!item) return res.status(404).json({ message: "Found item not found." });
+
+    item.status = "approved";
+
+    if (!item.qrToken) {
+      item.qrToken = generateFoundQrToken();
+      const qrData = await buildFoundQrCodeData(item.qrToken);
+      item.qrCodeData = qrData.qrCodeData;
+      item.qrScanUrl = qrData.scanUrl;
+      item.qrGeneratedAt = new Date();
+    }
+
+    await item.save();
 
     await Notification.create({
       recipient: item.createdBy,
@@ -161,6 +175,23 @@ exports.approveFoundItem = async (req, res) => {
       message: `Your found item report "${item.title}" has been approved.`,
       type: "found",
     });
+
+    if (item.qrCodeData) {
+      const qrBuffer = dataUrlToBuffer(item.qrCodeData);
+      
+      const emailResult = await sendFoundQrEmail({
+        to: "akilatheshan23@gmail.com",
+        userName: item.createdByName,
+        itemTitle: item.title,
+        scanUrl: item.qrScanUrl,
+        qrPngBuffer: qrBuffer,
+        filename: `found-item-qr-${String(item._id).slice(-6)}.png`
+      });
+
+      item.qrEmailSentAt = emailResult.sent ? new Date() : null;
+      item.qrEmailFallbackPath = emailResult.fallbackPath || "";
+      await item.save();
+    }
 
     res.status(200).json({ message: "Found item approved." });
   } catch (error) {

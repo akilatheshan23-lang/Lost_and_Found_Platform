@@ -49,7 +49,7 @@ exports.listSocialApproved = async (req, res) => {
     const items = await SocialPost.find(filter)
       .sort({ createdAt: -1 })
       .limit(Number(limit))
-      .select("postType title content imageUrl imageData tags status hidden createdBy createdByName likes createdAt updatedAt");
+      .select("postType title content imageUrl imageData tags status hidden createdBy createdByName likes comments createdAt updatedAt");
 
     const nextCursor = items.length ? items[items.length - 1].createdAt.toISOString() : null;
 
@@ -140,6 +140,102 @@ exports.likeSocial = async (req, res) => {
     await post.save();
 
     res.json({ likes: post.likes });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.commentSocial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const post = await SocialPost.findById(id);
+
+    if (!post) return res.status(404).json({ message: "Not found" });
+
+    const commenter = await User.findById(req.user.id).select("name");
+
+    const newComment = {
+      user: req.user.id,
+      userName: commenter?.name || "User",
+      text,
+      createdAt: new Date(),
+    };
+
+    post.comments.push(newComment);
+    await post.save();
+
+    const addedComment = post.comments[post.comments.length - 1];
+    res.status(201).json(addedComment);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.editCommentSocial = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+    const { text } = req.body;
+
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const post = await SocialPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const comment = post.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    const isOwner = String(comment.user) === String(req.user.id);
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not allowed to edit this comment" });
+    }
+
+    if (isOwner && !isAdmin) {
+      const diffMins = (Date.now() - comment.createdAt.getTime()) / 60000;
+      if (diffMins > 30) {
+        return res.status(403).json({ message: "Edit limit exceeded (30 mins)" });
+      }
+    }
+
+    comment.text = text;
+    await post.save();
+
+    res.json(comment);
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+
+exports.deleteCommentSocial = async (req, res) => {
+  try {
+    const { id, commentId } = req.params;
+
+    const post = await SocialPost.findById(id);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const comment = post.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    const isOwner = String(comment.user) === String(req.user.id);
+    const isAdmin = req.user.role === "admin";
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: "Not allowed to delete this comment" });
+    }
+
+    comment.deleteOne();
+    await post.save();
+
+    res.json({ message: "Comment deleted successfully", commentId });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
