@@ -16,7 +16,9 @@ exports.getPending = async (req, res) => {
 
 exports.getStats = async (req, res) => {
   try {
-    const users = await User.countDocuments();
+    // Count only active users for admin stats; also provide deleted count
+    const usersActive = await User.countDocuments({ isActive: { $ne: false } });
+    const usersDeleted = await User.countDocuments({ isActive: false });
 
     const [foundTotal, foundApproved, foundPending, foundHidden, foundClaimed] = await Promise.all([
       FoundItem.countDocuments(),
@@ -43,7 +45,8 @@ exports.getStats = async (req, res) => {
 
     res.status(200).json({
       counts: {
-        users,
+        users: usersActive,
+        deletedUsers: usersDeleted,
         found: {
           total: foundTotal,
           approved: foundApproved,

@@ -96,6 +96,14 @@ const getById = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: "No User found" });
     }
+
+    // If the account is deactivated, only allow admins to view it
+    const requesterId = req.auth && req.auth.userId;
+    const requesterRole = req.auth && req.auth.role;
+    if (user.isActive === false && requesterRole !== 'admin') {
+      return res.status(404).json({ message: "No User found" });
+    }
+
     return res.status(200).json({ user });
   } catch (err) {
     console.log(err);
@@ -107,6 +115,12 @@ const getById = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   const id = req.params.id;
   const { name, email, studentID, faculty, contactNumber, password, confirmPassword, role } = req.body;
+
+  // Authorization: only admin or the user themself can update
+  const requesterId = req.auth && req.auth.userId;
+  const requesterRole = req.auth && req.auth.role;
+  if (!requesterId) return res.status(401).json({ message: 'Unauthorized' });
+  if (requesterRole !== 'admin' && String(requesterId) !== String(id)) return res.status(403).json({ message: 'Not allowed' });
 
   if ((password || confirmPassword) && password !== confirmPassword) {
     return res.status(400).json({ message: "Passwords do not match" });
@@ -128,18 +142,25 @@ const updateUser = async (req, res, next) => {
   }
 
   if (password && confirmPassword) {
-    updatePayload.password = await bcrypt.hash(password, 10);
+    updatePayload.password = password; // UserModel pre-hook will hash
   }
 
   try {
-    const user = await User.findByIdAndUpdate(id, updatePayload, { new: true });
+    // Prevent updating a deactivated account unless admin
+    const existing = await User.findById(id);
+    if (!existing) return res.status(404).json({ message: "Unable to Update User Details" });
+    if (existing.isActive === false && requesterRole !== 'admin') {
+      return res.status(404).json({ message: "Unable to Update User Details" });
+    }
+
+    const user = await User.findByIdAndUpdate(id, { $set: updatePayload }, { new: true });
     if (!user) {
       return res.status(404).json({ message: "Unable to Update User Details" });
     }
     try {
       // record profile update audit
       user.lastProfileUpdatedAt = Date.now();
-      const actor = (req.auth && req.auth.userId) ? String(req.auth.userId) : String(user._id);
+      const actor = String(requesterId);
       user.actions = user.actions || [];
       user.actions.push({ type: 'profile_update', actor, message: 'Profile updated', createdAt: Date.now() });
       await user.save();
@@ -157,25 +178,25 @@ const updateUser = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
   const id = req.params.id;
 
+  // Authorization: only admin or the user themself can delete
+  const requesterId = req.auth && req.auth.userId;
+  const requesterRole = req.auth && req.auth.role;
+  if (!requesterId) return res.status(401).json({ message: 'Unauthorized' });
+  if (requesterRole !== 'admin' && String(requesterId) !== String(id)) return res.status(403).json({ message: 'Not allowed' });
+
   let user;
 
   try {
-    user = await User.findByIdAndUpdate(id, { isActive: false }, { new: true });
-    
-    // Log the deletion action in audit
-    if (user) {
-      const actor = (req.auth && req.auth.userId) ? String(req.auth.userId) : id;
-      user.actions = user.actions || [];
-      user.actions.push({ type: 'account_deleted', actor, message: 'Account deactivated (soft delete)', createdAt: Date.now() });
-      await user.save();
+    user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "Unable to Delete User Details" });
     }
+    
+    // Hard delete
+    await User.findByIdAndDelete(id);
   } catch (err) {
     console.log(err);
-  }
-
-  //not found
-  if (!user) {
-    return res.status(404).json({ message: "Unable to Delete User Details" });
+    return res.status(500).json({ message: "Unable to Delete User Details" });
   }
   return res.status(200).json({ message: "User Deleted Successfully" });
 }

@@ -112,7 +112,10 @@ function UpdateUser() {
   }
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.')) return;
+    const message = user && user._id === id 
+      ? 'Are you sure you want to permanently delete your account? This action cannot be undone.' 
+      : 'Are you sure you want to permanently delete this user? This action cannot be undone.';
+    if (!window.confirm(message)) return;
     try {
       setIsSubmitting(true)
       await api.delete(`/Users/${id}`)
@@ -227,14 +230,14 @@ function UpdateUser() {
           </div>
         </form>
 
-        {user && user._id === id && (
+        {user && (user._id === id || user.role === 'admin') && (
           <section className="mt-8 surface border-red-100 bg-red-50/30 p-6 animate-fade-up-delay-2">
             <p className="mt-2 text-sm text-red-700">
-              Permanently delete your account and all associated data. This action cannot be undone.
+              {user._id === id ? 'Permanently delete your account and all associated data. This action cannot be undone.' : 'Permanently delete this user account. This action cannot be undone.'}
             </p>
             <div className="mt-4">
               <button type="button" onClick={handleDelete} className="btn border border-red-200 bg-white text-red-700 hover:bg-red-50 hover:border-red-300 disabled:opacity-50 inline-flex items-center gap-2" disabled={isSubmitting}>
-                <Trash2 size={15} /> Delete My Account
+                <Trash2 size={15} /> {user._id === id ? 'Delete My Account' : 'Delete User Account'}
               </button>
             </div>
           </section>

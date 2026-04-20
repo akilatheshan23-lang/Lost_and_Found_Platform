@@ -15,8 +15,8 @@ router.get('/session', authMiddleware, UserController.getSessionUser);
 router.post('/mfa/generate', authMiddleware, UserController.generateMfa);
 router.post('/mfa/verify', authMiddleware, UserController.verifyMfa);
 router.post('/mfa/disable', authMiddleware, UserController.disableMfa);
-router.get('/:id', UserController.getById);
-router.put('/:id', UserController.updateUser);
-router.delete('/:id', UserController.deleteUser);
+router.get('/:id', authMiddleware, UserController.getById);
+router.put('/:id', authMiddleware, UserController.updateUser);
+router.delete('/:id', authMiddleware, UserController.deleteUser);
 //exports
 module.exports = router;
