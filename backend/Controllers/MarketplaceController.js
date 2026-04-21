@@ -2,10 +2,20 @@ const MarketplaceItem = require("../Model/MarketplaceItemModel");
 
 exports.getAllMarketplaceItems = async (req, res) => {
   try {
-    const filter = { status: "available" };
-    if (req.user && req.user.role !== "admin") {
-      filter.isApproved = true; // Users only see approved items
+    const { seller } = req.query;
+    const filter = {};
+
+    if (seller) {
+      filter.seller = seller;
+      // If a user is viewing their own ads, they might want to see pending ones too
+      // But for simplicity in the dashboard count, we just filter by seller
+    } else {
+      filter.status = "available";
+      if (req.user && req.user.role !== "admin") {
+        filter.isApproved = true; // Users only see approved items from others
+      }
     }
+
     const items = await MarketplaceItem.find(filter)
       .populate("seller", "name email")
       .sort({ createdAt: -1 });

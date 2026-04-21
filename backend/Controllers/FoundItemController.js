@@ -43,7 +43,7 @@ exports.createFound = async (req, res) => {
       foundDate: new Date(foundDateISO),
       userType,
       createdBy: req.user.id,
-      createdByName: creator?.name || "User",
+      createdByName: creator?.name || req.user.name || "User",
       status: "pending",
     });
 
@@ -55,9 +55,14 @@ exports.createFound = async (req, res) => {
 
 exports.listFoundApproved = async (req, res) => {
   try {
-    const { cursor, limit = 10, category, userType, q } = req.query;
+    const { cursor, limit = 10, category, userType, q, byUser, lean } = req.query;
 
-    const filter = { status: "approved", hidden: { $ne: true } };
+    const filter = { hidden: { $ne: true } };
+    if (byUser) {
+      filter.createdBy = byUser;
+    } else {
+      filter.status = "approved";
+    }
     if (category) filter.category = category;
     if (userType) filter.userType = userType;
     if (q) {
@@ -66,10 +71,14 @@ exports.listFoundApproved = async (req, res) => {
     }
     if (cursor) filter.createdAt = { $lt: new Date(cursor) };
 
-    const items = await FoundItem.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(Number(limit))
-      .select("title description imageUrl imageData category location foundDate userType status isClaimed claimedBy createdBy createdByName createdAt updatedAt");
+    let query = FoundItem.find(filter).sort({ createdAt: -1 }).limit(Number(limit));
+    if (lean === "true") {
+      query = query.select("title description imageUrl category location foundDate userType status isClaimed claimedBy createdBy createdByName createdAt updatedAt");
+    } else {
+      query = query.select("title description imageUrl imageData category location foundDate userType status isClaimed claimedBy createdBy createdByName createdAt updatedAt");
+    }
+
+    const items = await query;
     const nextCursor = items.length ? items[items.length - 1].createdAt.toISOString() : null;
 
     res.json({ items, nextCursor });
@@ -176,12 +185,17 @@ exports.approveFoundItem = async (req, res) => {
       type: "found",
     });
 
-    if (item.qrCodeData) {
+    const creator = await User.findById(item.createdBy).select("name email");
+    if ((!item.createdByName || item.createdByName === "User") && creator?.name) {
+      item.createdByName = creator.name;
+    }
+
+    if (item.qrCodeData && creator?.email) {
       const qrBuffer = dataUrlToBuffer(item.qrCodeData);
       
       const emailResult = await sendFoundQrEmail({
-        to: "akilatheshan23@gmail.com",
-        userName: item.createdByName,
+        to: creator.email,
+        userName: creator.name || item.createdByName,
         itemTitle: item.title,
         scanUrl: item.qrScanUrl,
         qrPngBuffer: qrBuffer,

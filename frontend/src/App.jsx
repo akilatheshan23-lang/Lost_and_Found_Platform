@@ -9,6 +9,7 @@ import UpdateUser from './Components/UpdateUser/UpdateUser.jsx'
 import Login from './Components/Login/Login.jsx'
 import ForgotPassword from './Components/Login/ForgotPassword.jsx'
 import ResetPassword from './Components/Login/ResetPassword.jsx'
+import UserDashboard from './Components/Dashboard/UserDashboard.jsx'
 import AdminDashboard from './Components/Dashboard/AdminDashboard.jsx'
 import MfaSettings from './Components/MFA/MfaSettings.jsx'
 import ProtectedRoute from './state/ProtectedRoute.jsx'
@@ -79,6 +80,7 @@ function App() {
 
             <Route element={<ProtectedRoute allowedRoles={['student']} />}>
               <Route path="/user-dashboard" element={<HomeDashboard />} />
+              <Route path="/home-dashboard" element={<UserDashboard />} />
 
               <Route element={<UnifiedLayout />}>
                 <Route path="/lost" element={<LostPage />} />

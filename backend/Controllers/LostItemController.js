@@ -2,12 +2,15 @@ const LostItem = require("../Model/LostItemModel");
 
 exports.getLostItems = async (req, res) => {
   try {
-    const { category, status } = req.query;
+    const { category, status, createdBy, limit } = req.query;
     const filter = {};
     if (category) filter.category = category;
     if (status) filter.status = status;
+    if (createdBy) filter.createdBy = createdBy;
 
-    const items = await LostItem.find(filter).sort({ createdAt: -1 });
+    const items = await LostItem.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(Number(limit) || 100);
     res.json(items);
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });

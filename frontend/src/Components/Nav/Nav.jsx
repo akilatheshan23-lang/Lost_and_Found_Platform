@@ -16,7 +16,7 @@ function Nav() {
         <ul className="hidden items-center space-x-6 text-sm font-medium text-slate-600 md:flex">
           {isAuthenticated && (
             <li>
-              <Link to={user?.role === 'admin' ? '/admin-dashboard' : '/user-dashboard'} className="transition hover:text-teal-700">Option</Link>
+              <Link to={user?.role === 'admin' ? '/admin-dashboard' : '/user-dashboard'} className="transition hover:text-teal-700">Dashboard</Link>
             </li>
           )}
           <li><Link to="/mainhome" className="transition hover:text-teal-700">Home</Link></li>

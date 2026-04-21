@@ -10,11 +10,14 @@ function User(props) {
   const history = useNavigate();
 
   const DeleteHandler = async () => {
+    if (!window.confirm("Are you sure you want to delete this user account?")) return;
     setIsDeleting(true)
     await api
       .delete(`/Users/${_id}`)
       .then((res) => res.data)
-      .then(() => history("/users"))
+      .then(() => {
+        window.location.reload();
+      })
       .finally(() => setIsDeleting(false));
   }
 
