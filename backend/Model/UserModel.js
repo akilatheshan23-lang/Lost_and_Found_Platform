@@ -63,6 +63,31 @@ const UserSchema = new Schema({
     resetPasswordExpiry: {
         type: Date,
     },
+    failedLoginAttempts: {
+        type: Number,
+        default: 0,
+    },
+    lockoutUntil: {
+        type: Date,
+    },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+    lastLoginAt: {
+        type: Date,
+    },
+    lastProfileUpdatedAt: {
+        type: Date,
+    },
+    actions: [
+        {
+            type: { type: String },
+            actor: { type: String },
+            message: { type: String },
+            createdAt: { type: Date, default: Date.now },
+        },
+    ],
     
 }, { timestamps: true });
 

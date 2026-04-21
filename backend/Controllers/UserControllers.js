@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret-in-env';
 //Data Display
 const getAllUsers = async (req, res, next) => {
   try {
-    const Users = await User.find().select('-password');
+    const Users = await User.find({ isActive: { $ne: false } }).select('-password');
     if (!Users || Users.length === 0) {
       return res.status(404).json({ message: "No Users found" });
     }
@@ -61,6 +61,8 @@ const addUser = async (req, res, next) => {
       contactNumber: contactDigits,
       password: hashedPassword,
       role: finalRole,
+      lastProfileUpdatedAt: Date.now(),
+      actions: [{ type: 'created', actor: 'system', message: 'Account created', createdAt: Date.now() }],
     });
     await user.save();
     const safeUser = user.toObject();
@@ -93,6 +95,12 @@ const getById = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ message: "No User found" });
     }
+
+    const requesterRole = req.auth && req.auth.role;
+    if (user.isActive === false && requesterRole !== 'admin') {
+      return res.status(404).json({ message: "No User found" });
+    }
+
     return res.status(200).json({ user });
   } catch (err) {
     console.log(err);
@@ -104,6 +112,13 @@ const getById = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   const id = req.params.id;
   const { name, email, studentID, faculty, contactNumber, password, confirmPassword, role } = req.body;
+
+  const requesterId = req.auth && req.auth.userId;
+  const requesterRole = req.auth && req.auth.role;
+  if (!requesterId) return res.status(401).json({ message: 'Unauthorized' });
+  if (requesterRole !== 'admin' && String(requesterId) !== String(id)) {
+    return res.status(403).json({ message: 'Not allowed' });
+  }
 
   if ((password || confirmPassword) && password !== confirmPassword) {
     return res.status(400).json({ message: "Passwords do not match" });
@@ -129,10 +144,29 @@ const updateUser = async (req, res, next) => {
   }
 
   try {
-    const user = await User.findByIdAndUpdate(id, updatePayload, { new: true });
+    const existing = await User.findById(id);
+    if (!existing) {
+      return res.status(404).json({ message: "Unable to Update User Details" });
+    }
+    if (existing.isActive === false && requesterRole !== 'admin') {
+      return res.status(404).json({ message: "Unable to Update User Details" });
+    }
+
+    const user = await User.findByIdAndUpdate(id, { $set: updatePayload }, { new: true });
     if (!user) {
       return res.status(404).json({ message: "Unable to Update User Details" });
     }
+
+    try {
+      user.lastProfileUpdatedAt = Date.now();
+      const actor = String(requesterId);
+      user.actions = user.actions || [];
+      user.actions.push({ type: 'profile_update', actor, message: 'Profile updated', createdAt: Date.now() });
+      await user.save();
+    } catch (auditError) {
+      console.error('Failed to record profile update audit:', auditError?.message || auditError);
+    }
+
     return res.status(200).json({ user });
   } catch (err) {
     console.log(err);
@@ -144,18 +178,25 @@ const updateUser = async (req, res, next) => {
 const deleteUser = async (req, res, next) => {
   const id = req.params.id;
 
+  const requesterId = req.auth && req.auth.userId;
+  const requesterRole = req.auth && req.auth.role;
+  if (!requesterId) return res.status(401).json({ message: 'Unauthorized' });
+  if (requesterRole !== 'admin' && String(requesterId) !== String(id)) {
+    return res.status(403).json({ message: 'Not allowed' });
+  }
+
   let user;
 
   try {
     user = await User.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({ message: "Unable to Delete User Details" });
+    }
   } catch (err) {
     console.log(err);
+    return res.status(500).json({ message: "Unable to Delete User Details" });
   }
 
-  //not found
-  if (!user) {
-    return res.status(404).json({ message: "Unable to Delete User Details" });
-  }
   return res.status(200).json({ message: "User Deleted Successfully" });
 }
 
@@ -175,8 +216,8 @@ const loginUser = async (req, res) => {
   const role = normalizedEmail.endsWith(studentDomain)
     ? 'student'
     : normalizedEmail.endsWith(adminDomain)
-    ? 'admin'
-    : null;
+      ? 'admin'
+      : null;
 
   if (!role) {
     return res.status(403).json({ message: "Unauthorized domain" });
@@ -187,6 +228,16 @@ const loginUser = async (req, res) => {
     console.log('[auth] User lookup result:', !!user);
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Account has been deleted or deactivated." });
+    }
+
+    if (user.lockoutUntil && user.lockoutUntil.getTime && user.lockoutUntil.getTime() > Date.now()) {
+      const msLeft = user.lockoutUntil.getTime() - Date.now();
+      const minutesLeft = Math.ceil(msLeft / (60 * 1000));
+      return res.status(403).json({ message: `Account is temporarily locked due to multiple failed login attempts. Please try again in ${minutesLeft} minute(s).` });
     }
 
     // Support legacy users created before role field was enforced.
@@ -208,7 +259,21 @@ const loginUser = async (req, res) => {
     console.log('[auth] Password valid:', isPasswordValid, 'passwordHashed:', isPasswordHashed);
 
     if (!isPasswordValid) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+
+      if (user.failedLoginAttempts >= 5) {
+        user.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
+        await user.save();
+        return res.status(403).json({ message: "Account is temporarily locked due to multiple failed login attempts. Please try again in 15 minute(s)." });
+      }
+
+      await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (user.failedLoginAttempts > 0 || user.lockoutUntil) {
+      user.failedLoginAttempts = 0;
+      user.lockoutUntil = undefined;
     }
 
     if (!isPasswordHashed && role === 'student') {
@@ -235,6 +300,11 @@ const loginUser = async (req, res) => {
         return res.status(401).json({ message: 'Invalid MFA code' });
       }
     }
+
+    user.lastLoginAt = Date.now();
+    user.actions = user.actions || [];
+    user.actions.push({ type: 'login', actor: String(user._id), message: 'User logged in', createdAt: Date.now() });
+    await user.save();
 
     const safeUser = user.toObject();
     delete safeUser.password;
