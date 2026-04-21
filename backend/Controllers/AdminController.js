@@ -44,10 +44,27 @@ exports.getStats = async (req, res) => {
     const recentSocial = await SocialPost.find().sort({ createdAt: -1 }).limit(5);
     const recentMarketplace = await MarketplaceItem.find().sort({ createdAt: -1 }).limit(5);
 
+    const stats = await User.aggregate([
+      { $match: { isActive: { $ne: false } } },
+      {
+        $group: {
+          _id: "$faculty",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    const facultyDistribution = stats.map(item => ({
+      name: item._id || 'Unspecified',
+      value: item.count
+    }));
+
     res.status(200).json({
       counts: {
         users: usersActive,
         deletedUsers: usersDeleted,
+        facultyDistribution,
         found: {
           total: foundTotal,
           approved: foundApproved,
@@ -73,6 +90,31 @@ exports.getStats = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching stats", error: error.message });
+  }
+};
+
+exports.getFacultyStats = async (req, res) => {
+  try {
+    const stats = await User.aggregate([
+      { $match: { isActive: { $ne: false } } },
+      {
+        $group: {
+          _id: "$faculty",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Format for pie chart: { name: 'Computing', value: 10 }
+    const formattedStats = stats.map(item => ({
+      name: item._id || 'Unspecified',
+      value: item.count
+    }));
+
+    res.status(200).json(formattedStats);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching faculty stats", error: error.message });
   }
 };
 
