@@ -1,6 +1,8 @@
 const FoundItem = require("../Model/FoundItemModel");
 const SocialPost = require("../Model/SocialPostModel");
 const MarketplaceItem = require("../Model/MarketplaceItemModel");
+const LostItem = require("../Model/LostItemModel");
+const Claim = require("../Model/ClaimModel");
 const User = require("../Model/UserModel");
 const { generateFoundQrToken, buildFoundQrCodeData, dataUrlToBuffer } = require("../utils/foundQrUtils");
 const { sendFoundQrEmail } = require("../utils/emailUtils");
@@ -44,10 +46,27 @@ exports.getStats = async (req, res) => {
     const recentSocial = await SocialPost.find().sort({ createdAt: -1 }).limit(5);
     const recentMarketplace = await MarketplaceItem.find().sort({ createdAt: -1 }).limit(5);
 
+    const stats = await User.aggregate([
+      { $match: { isActive: { $ne: false } } },
+      {
+        $group: {
+          _id: "$faculty",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    const facultyDistribution = stats.map(item => ({
+      name: item._id || 'Unspecified',
+      value: item.count
+    }));
+
     res.status(200).json({
       counts: {
         users: usersActive,
         deletedUsers: usersDeleted,
+        facultyDistribution,
         found: {
           total: foundTotal,
           approved: foundApproved,
@@ -73,6 +92,70 @@ exports.getStats = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "Error fetching stats", error: error.message });
+  }
+};
+
+exports.getFacultyStats = async (req, res) => {
+  try {
+    const stats = await User.aggregate([
+      { $match: { isActive: { $ne: false } } },
+      {
+        $group: {
+          _id: "$faculty",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Format for pie chart: { name: 'Computing', value: 10 }
+    const formattedStats = stats.map(item => ({
+      name: item._id || 'Unspecified',
+      value: item.count
+    }));
+
+    res.status(200).json(formattedStats);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching faculty stats", error: error.message });
+  }
+};
+
+exports.getDetailedReport = async (req, res) => {
+  try {
+    const users = await User.find({ isActive: { $ne: false } }).select("-password");
+    
+    // Fetch counts for all users in parallel for performance
+    const detailedData = await Promise.all(
+      users.map(async (user) => {
+        const [lostCount, foundCount, marketCount, claimCount] = await Promise.all([
+          LostItem.countDocuments({ createdBy: user._id }),
+          FoundItem.countDocuments({ createdBy: user._id }),
+          MarketplaceItem.countDocuments({ seller: user._id }),
+          Claim.countDocuments({ claimedByAccount: user._id }),
+        ]);
+
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          faculty: user.faculty,
+          studentID: user.studentID,
+          activity: {
+            lostReports: lostCount,
+            foundReports: foundCount,
+            marketplaceAds: marketCount,
+            claimsMade: claimCount,
+            totalActions: lostCount + foundCount + marketCount + claimCount
+          },
+          joinedAt: user.createdAt
+        };
+      })
+    );
+
+    res.status(200).json(detailedData);
+  } catch (error) {
+    res.status(500).json({ message: "Error generating detailed report data", error: error.message });
   }
 };
 
