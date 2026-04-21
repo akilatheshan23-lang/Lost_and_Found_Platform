@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import Nav from '../Nav/Nav'
 import api from '../../api'
 import User from '../User/User';
-import { AlertCircle, Loader2, Users as UsersIcon, PieChart as PieChartIcon, TrendingUp } from 'lucide-react'
+import { AlertCircle, Loader2, Users as UsersIcon, PieChart as PieChartIcon, TrendingUp, Download, FileBarChart } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const fetchHandler = async () => {
   return await api.get('/Users').then((res) => res.data);
@@ -21,6 +23,7 @@ function Users() {
   const [facultyStats, setFacultyStats] = useState([]);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isExporting, setIsExporting] = useState(false);
 
   useEffect(() => {
     Promise.all([fetchHandler(), fetchFacultyStats()])
@@ -34,6 +37,61 @@ function Users() {
       })
       .finally(() => setLoading(false))
   }, []);
+
+  const handleDownloadReport = async () => {
+    setIsExporting(true);
+    try {
+      const response = await api.get('/api/admin/detailed-report');
+      const data = response.data;
+
+      const doc = new jsPDF();
+      
+      // Header info
+      doc.setFontSize(22);
+      doc.setTextColor(30, 41, 59); // Slate-800
+      doc.text('Platform Analytical Report', 14, 22);
+      
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139); // Slate-500
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+      doc.text(`Total Registered Users: ${data.length}`, 14, 35);
+      
+      // Horizontal Line
+      doc.setDrawColor(226, 232, 240); // Slate-200
+      doc.line(14, 40, 196, 40);
+
+      const tableRows = data.map(u => [
+        u.name,
+        u.email,
+        u.studentID,
+        u.faculty,
+        u.role,
+        u.activity.lostReports,
+        u.activity.foundReports,
+        u.activity.marketplaceAds,
+        u.activity.claimsMade,
+        u.activity.totalActions
+      ]);
+
+      autoTable(doc, {
+        startY: 45,
+        head: [['Name', 'Email', 'ID', 'Faculty', 'Role', 'Lost', 'Found', 'Market', 'Claims', 'Total']],
+        body: tableRows,
+        theme: 'striped',
+        headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { top: 45 }
+      });
+
+      doc.save(`LostFound_Analytics_${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/50">
@@ -53,6 +111,19 @@ function Users() {
                 Analyze student participation across departments and manage the campus recovery network from a centralized command center.
               </p>
             </div>
+            <button 
+              onClick={handleDownloadReport}
+              disabled={isExporting}
+              className="group flex items-center gap-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 px-6 py-4 rounded-2xl transition-all duration-300 shadow-xl hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="bg-indigo-500 p-2 rounded-xl group-hover:scale-110 transition-transform">
+                {isExporting ? <Loader2 size={20} className="animate-spin" /> : <FileBarChart size={20} />}
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-200 leading-none mb-1">Analytical Insight</p>
+                <p className="text-base font-black text-white leading-none">{isExporting ? 'Generating...' : 'Download Report'}</p>
+              </div>
+            </button>
           </div>
         </div>
 

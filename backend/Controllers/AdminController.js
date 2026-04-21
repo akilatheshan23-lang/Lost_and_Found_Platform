@@ -1,6 +1,8 @@
 const FoundItem = require("../Model/FoundItemModel");
 const SocialPost = require("../Model/SocialPostModel");
 const MarketplaceItem = require("../Model/MarketplaceItemModel");
+const LostItem = require("../Model/LostItemModel");
+const Claim = require("../Model/ClaimModel");
 const User = require("../Model/UserModel");
 const { generateFoundQrToken, buildFoundQrCodeData, dataUrlToBuffer } = require("../utils/foundQrUtils");
 const { sendFoundQrEmail } = require("../utils/emailUtils");
@@ -115,6 +117,45 @@ exports.getFacultyStats = async (req, res) => {
     res.status(200).json(formattedStats);
   } catch (error) {
     res.status(500).json({ message: "Error fetching faculty stats", error: error.message });
+  }
+};
+
+exports.getDetailedReport = async (req, res) => {
+  try {
+    const users = await User.find({ isActive: { $ne: false } }).select("-password");
+    
+    // Fetch counts for all users in parallel for performance
+    const detailedData = await Promise.all(
+      users.map(async (user) => {
+        const [lostCount, foundCount, marketCount, claimCount] = await Promise.all([
+          LostItem.countDocuments({ createdBy: user._id }),
+          FoundItem.countDocuments({ createdBy: user._id }),
+          MarketplaceItem.countDocuments({ seller: user._id }),
+          Claim.countDocuments({ claimedByAccount: user._id }),
+        ]);
+
+        return {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          faculty: user.faculty,
+          studentID: user.studentID,
+          activity: {
+            lostReports: lostCount,
+            foundReports: foundCount,
+            marketplaceAds: marketCount,
+            claimsMade: claimCount,
+            totalActions: lostCount + foundCount + marketCount + claimCount
+          },
+          joinedAt: user.createdAt
+        };
+      })
+    );
+
+    res.status(200).json(detailedData);
+  } catch (error) {
+    res.status(500).json({ message: "Error generating detailed report data", error: error.message });
   }
 };
 

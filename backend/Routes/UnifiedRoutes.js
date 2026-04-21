@@ -59,6 +59,7 @@ router.patch("/notifications/read-all", auth, notifCtrl.markAllAsRead);
 router.get("/admin/pending", auth, adminCtrl.getPending);
 router.get("/admin/stats", auth, adminCtrl.getStats);
 router.get("/admin/faculty-stats", auth, adminCtrl.getFacultyStats);
+router.get("/admin/detailed-report", auth, adminCtrl.getDetailedReport);
 
 router.post("/admin/found/:id/approve", auth, adminCtrl.approveFound);
 router.post("/admin/found/:id/reject", auth, adminCtrl.rejectFound);
