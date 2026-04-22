@@ -67,7 +67,8 @@ export default function FoundScanPage() {
     };
   }, [token]);
 
-  const pdfUrl = `/api/found/scan/${token}/pdf`;
+  const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const pdfUrl = `${baseURL}/api/found/scan/${token}/pdf`;
 
   return (
     <div className="max-w-5xl mx-auto py-2">
