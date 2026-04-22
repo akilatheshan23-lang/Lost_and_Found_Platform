@@ -23,7 +23,6 @@ function Nav() {
           <li><Link to="/about" className="transition hover:text-teal-700">About</Link></li>
           <li><Link to="/services" className="transition hover:text-teal-700">Services</Link></li>
           <li><Link to="/faq" className="transition hover:text-teal-700">FAQ</Link></li>
-          <li><Link to="/contact" className="transition hover:text-teal-700">Contact</Link></li>
         </ul>
 
         <div className="flex items-center space-x-2 sm:space-x-3">

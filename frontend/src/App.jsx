@@ -12,6 +12,7 @@ import ResetPassword from './Components/Login/ResetPassword.jsx'
 import UserDashboard from './Components/Dashboard/UserDashboard.jsx'
 import AdminDashboard from './Components/Dashboard/AdminDashboard.jsx'
 import MfaSettings from './Components/MFA/MfaSettings.jsx'
+import FAQ from './Components/FAQ/FAQ.jsx'
 import ProtectedRoute from './state/ProtectedRoute.jsx'
 import { useAuth } from './state/AuthContext.jsx'
 
@@ -66,6 +67,7 @@ function App() {
             <Route path="/mainhome" element={homeElement} />
             <Route path="/about" element={<About />} />
             <Route path="/services" element={<Services />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route path="/users" element={<Users />} />
 
             <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
