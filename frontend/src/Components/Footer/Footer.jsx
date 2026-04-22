@@ -7,7 +7,7 @@ function Footer() {
     <footer className="mt-16 border-t border-slate-200 bg-slate-900 text-slate-200 animate-soft-in">
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 md:grid-cols-4">
         <div>
-          <h3 className="text-lg font-semibold text-white inline-flex items-center gap-2"><Shield size={18} /> Lost & Found UM</h3>
+          <h3 className="text-lg font-semibold text-white inline-flex items-center gap-2"><Shield size={18} /> Lost & Found Platform</h3>
           <p className="mt-2 text-sm text-slate-300">Report lost items, return found belongings, and use the student marketplace to buy or sell used devices safely.</p>
         </div>
 
