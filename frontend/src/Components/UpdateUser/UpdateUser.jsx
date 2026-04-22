@@ -33,7 +33,7 @@ function UpdateUser() {
   if (inputs.studentID || user?.studentID) maturityScore += 20;
   if (inputs.contactNumber || user?.contactNumber) maturityScore += 20;
   if (user?.mfaEnabled) maturityScore += 20;
-  
+
   const displayUserName = inputs.name || user?.name || 'Student';
 
   useEffect(() => {
@@ -48,7 +48,7 @@ function UpdateUser() {
             email: data.user?.email ?? '',
             studentID: data.user?.studentID ?? '',
             faculty: data.user?.faculty ?? '',
-            contactNumber: data.user?.contactNumber ?? '',
+            contactNumber: (data.user?.contactNumber ?? '').replace(/\D/g, '').slice(0, 10),
             password: '',
             confirmPassword: '',
           }))
@@ -60,9 +60,6 @@ function UpdateUser() {
   const sendRequest = async () => {
     const payload = {
       name: String(inputs.name),
-      email: String(inputs.email),
-      studentID: String(inputs.studentID),
-      faculty: String(inputs.faculty),
       contactNumber: String(inputs.contactNumber),
     };
 
@@ -87,10 +84,10 @@ function UpdateUser() {
     e.preventDefault();
     setIsSubmitting(true)
     try {
-      // Validate contact number before sending
-      const digits = String(inputs.contactNumber || '').replace(/\D/g, '');
-      if (digits.length !== 10) {
-        setError('Contact number must be exactly 10 digits');
+      // Validate contact number: exactly 10 digits
+      const contactRegex = /^[0-9]{10}$/;
+      if (!contactRegex.test(inputs.contactNumber)) {
+        setError('Contact number must be exactly 10 digits (numerical only)');
         setIsSubmitting(false)
         return
       }
@@ -112,8 +109,8 @@ function UpdateUser() {
   }
 
   const handleDelete = async () => {
-    const message = user && user._id === id 
-      ? 'Are you sure you want to permanently delete your account? This action cannot be undone.' 
+    const message = user && user._id === id
+      ? 'Are you sure you want to permanently delete your account? This action cannot be undone.'
       : 'Are you sure you want to permanently delete this user? This action cannot be undone.';
     if (!window.confirm(message)) return;
     try {
@@ -146,9 +143,9 @@ function UpdateUser() {
 
         {user && user._id === id && (
           <div className="surface mt-6 flex flex-col sm:flex-row sm:items-center gap-5 p-6 animate-fade-up border-t-4 border-t-teal-600">
-            <img 
-              src={`https://ui-avatars.com/api/?name=${displayUserName.replace(' ', '+')}&background=0f766e&color=fff&size=128&bold=true`} 
-              alt={displayUserName} 
+            <img
+              src={`https://ui-avatars.com/api/?name=${displayUserName.replace(' ', '+')}&background=0f766e&color=fff&size=128&bold=true`}
+              alt={displayUserName}
               className="h-16 w-16 rounded-full border-2 border-slate-100 shadow-sm object-cover"
             />
             <div className="flex-1">
@@ -191,12 +188,13 @@ function UpdateUser() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700">Student ID</label>
-              <input className="field mt-1" type="text" name="studentID" placeholder='Student ID' value={inputs.studentID} onChange={handleChange} required />
+              <input className="field mt-1 bg-slate-50 cursor-not-allowed" type="text" name="studentID" placeholder='Student ID' value={inputs.studentID} disabled aria-readonly="true" />
+              <small className="text-xs text-slate-500">Student ID is uniquely linked to your account.</small>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700">Faculty</label>
-              <select className="field mt-1" name="faculty" value={inputs.faculty} onChange={handleChange} required>
+              <select className="field mt-1 bg-slate-50 cursor-not-allowed" name="faculty" value={inputs.faculty} disabled aria-readonly="true">
                 <option value="" disabled>Select faculty</option>
                 <option value="Computing">Computing</option>
                 <option value="Business">Business</option>
@@ -204,11 +202,27 @@ function UpdateUser() {
                 <option value="Humanities and sciences">Humanities and sciences</option>
                 <option value="Architecture">Architecture</option>
               </select>
+              <small className="text-xs text-slate-500">Faculty designation is fixed upon registration.</small>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700">Contact Number</label>
-              <input className="field mt-1" type="tel" name="contactNumber" placeholder='Contact Number' value={inputs.contactNumber} onChange={handleChange} required />
+              <input 
+                className="field mt-1" 
+                type="text" 
+                name="contactNumber" 
+                placeholder='077XXXXXXX' 
+                value={inputs.contactNumber} 
+                maxLength={10}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) {
+                    setInputs(prev => ({ ...prev, contactNumber: val }));
+                  }
+                }} 
+                required 
+              />
+              <small className="text-xs text-slate-500">Must be exactly 10 digits.</small>
             </div>
 
             <div>

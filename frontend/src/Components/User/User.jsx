@@ -4,7 +4,7 @@ import api from '../../api'
 import { Loader2, PencilLine, Trash2 } from 'lucide-react'
 
 function User(props) {
-  const { _id, name, email, studentID, faculty, contactNumber } = props.user;
+  const { _id, name, email, studentID, faculty, contactNumber, role } = props.user;
   const [isDeleting, setIsDeleting] = useState(false)
 
   const history = useNavigate();
@@ -46,12 +46,14 @@ function User(props) {
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
-        <Link className="btn btn-primary inline-flex items-center gap-2" to={`/users/${_id}`}><PencilLine size={14} /> Update</Link>
-        <button className="btn border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70 inline-flex items-center gap-2" onClick={DeleteHandler} disabled={isDeleting}>
-          {isDeleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : <><Trash2 size={14} /> Delete</>}
-        </button>
-      </div>
+      {role !== 'admin' && (
+        <div className="mt-4 flex gap-2">
+          <Link className="btn btn-primary inline-flex items-center gap-2" to={`/users/${_id}`}><PencilLine size={14} /> Update</Link>
+          <button className="btn border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-70 inline-flex items-center gap-2" onClick={DeleteHandler} disabled={isDeleting}>
+            {isDeleting ? <><Loader2 size={14} className="animate-spin" /> Deleting...</> : <><Trash2 size={14} /> Delete</>}
+          </button>
+        </div>
+      )}
     </article>
   )
 }
