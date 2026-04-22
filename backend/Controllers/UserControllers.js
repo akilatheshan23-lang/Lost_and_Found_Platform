@@ -126,10 +126,6 @@ const updateUser = async (req, res, next) => {
 
   const updatePayload = {};
   if (typeof name !== 'undefined') updatePayload.name = name;
-  if (typeof email !== 'undefined') updatePayload.email = email;
-  if (typeof studentID !== 'undefined') updatePayload.studentID = studentID;
-  if (typeof faculty !== 'undefined') updatePayload.faculty = faculty;
-  if (typeof role !== 'undefined') updatePayload.role = role;
 
   if (typeof contactNumber !== 'undefined') {
     const digits = String(contactNumber || '').replace(/\D/g, '');
